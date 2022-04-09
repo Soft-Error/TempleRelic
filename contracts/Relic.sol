@@ -1,28 +1,73 @@
-// unlicensed
+//                  / /\
+//                 / /  \
+//                / / /\ \
+//               / / /\ \ \
+//              / / /  \ \ \
+//             / / /    \ \ \
+//            / / /      \ \ \
+//           / / /        \ \ \
+//          / / /          \ \ \
+//         / / /   _   _    \ \ \
+//        / / /\  /\ \/ /\  /\ \ \
+//      .`.`.`\ \ \ \/ / / / /`.`.`.
+//    .`.`.` \ \ \ \/ / / / / / `.`.`.
+//  .`.`.`    \ \ \/ / /\/ / /    `.`.`.
+//.`.`.`       \ \ \/ /\/ / /       `.`.`.
+//`.`.`.        \_\  /\  /_/        .`.`.`
+//  `.`.`.      / /  \/  \ \      .`.`.`
+//    `.`.`.   / / /\ \/\ \ \   .`.`.`
+//      `.`.`./ / /\ \ \/\ \ \.`.`.`
+//        \ \ \/ / /\ \ \ \ \/ / /
+//         \ \ \/ /_/\ \ \ \/ / /
+//          \ \ \ \_\/\_\/ / / /
+//           \ \ \        / / /
+//            \ \ \      / / /
+//             \ \ \    / / /
+//              \ \ \  / / /
+//               \ \ \/ / /
+//                \ \ \/ /
+//                 \ \  /
+//                  \_\/
 pragma solidity ^0.8.4;
 
-import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
-import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
-import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
 
-contract Relic is
-    ERC1155,
-    Ownable,
-    Pausable,
-    ERC1155Burnable,
-    ERC1155Supply,
-    ReentrancyGuard
-{
-    constructor() ERC1155("") {}
+interface IItems {
+    function equipItems(uint256[] memory _itemIds, uint256[] memory _amounts) external;
+    function unEquipItems(address _target, uint256[] memory _itemIds, uint256[] memory _amounts) external;
+    function burnFromRelic(uint256 _itemId, uint256 _amount) external;
+    function mintFromRelic(uint256 _itemId, uint256 _amount) external; 
+}
 
+
+contract Relic is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable, ERC721Burnable,IERC1155Receiver, ReentrancyGuard  {
+    constructor() ERC721("Relic", "RELIC") {}
+
+    using Counters for Counters.Counter;
+    Counters.Counter private _tokenIdCounter;
+
+    // @dev Relic mint whitelist
+    mapping (address => bool) public whitelisted;
+    // @dev Relic content: RelicId => ItemId => Balance
+    mapping (uint256 => mapping(uint256 => uint256)) public balances;
+    // @dev Recipes
     mapping(uint256 => Recipe) public recipes;
-    mapping(address => uint256) public activeRelic;
-    mapping(address => bool) public relicAuthority;
+    // @dev Relic Experience Points
+    mapping(uint256 => uint256) public relicXP;
 
-    address private relicCreator;
+    string private uriSuffix;
+    // @dev RelicItems.sol
+    IItems private ITEMS;
+    // @dev Contract providing experience points to Relics
+    address private experienceProvider;
 
     struct Recipe {
         uint16 id;
@@ -34,90 +79,147 @@ contract Relic is
 
     event Transmutation(address Templar, uint256 recipeId);
 
-    modifier hasAuthority() {
-        require(relicAuthority[msg.sender], "No authority");
-        _;
-    }
-
-    modifier hasActiveRelic() {
-        require(activeRelic[msg.sender] > 0, "You don't have an active Relic");
-        _;
-    }
-
     //------- External -------//
 
-    // templar forges a Relic. Can be done through Temple only as another contract will take care of staking ?
-    function createRelic(address _templar) external hasAuthority {
-        activeRelic[_templar] = 1;
+    function mintRelic () external nonReentrant {
+        require(whitelisted[msg.sender], "You cannot own a Relic yet");
+        string memory baseURI = _baseURI();
+        safeMint(msg.sender, baseURI);
+
+        //remove whitelist
+        whitelisted[msg.sender]=false;
     }
 
-    // same has create, going to be called from another contract if we want to released staked
-    // temple upon burn?
-    function renounceRelic(address _templar) external hasAuthority {
-        // check Templar has a Relic
-        require(activeRelic[_templar] > 0);
-        // change activeRelic to -1
-        activeRelic[_templar] = 0;
+    function renounceRelic(uint256 _relicId) external nonReentrant  {
+        require(ownerOf(_relicId)==msg.sender);
+        _burn(_relicId);
     }
 
-    // use receipes to transform ingredients into a new item
-    function transmute(uint256 _recipeId, bytes memory _data)
+    // @dev Templar equips his items into his Relic
+    function batchEquipItems(uint256 _targetRelic, uint256[] memory _itemIds, uint256[] memory _amounts) external nonReentrant {
+        // entry point, check that templar has enough items
+
+        // transfer them to the Relic
+        ITEMS.equipItems(_itemIds, _amounts);
+        // update balances
+        for(uint i=0; i<_itemIds.length;i++){
+            balances[_targetRelic][_itemIds[i]]+= _amounts[i];
+        }
+    }
+
+
+    function batchUnequipItems(uint256 _targetRelic, uint256[] memory _itemIds, uint256[] memory _amounts) external nonReentrant {
+        // entry point, check Relic balance
+
+        // transfer to sender
+        ITEMS.unEquipItems(msg.sender, _itemIds, _amounts);
+        // update balances
+        for(uint i=0; i<_itemIds.length;i++){
+            balances[_targetRelic][_itemIds[i]]-= _amounts[i];
+        }
+    }
+
+     // use receipes to transform ingredients into a new item
+    function transmute(uint256 _relicId, uint256 _recipeId)
         external
         nonReentrant
-        hasActiveRelic
     {
+
         Recipe memory transmutation = recipes[_recipeId];
         // Destroy
         for (uint256 i = 0; i < transmutation.requiredIds.length; i++) {
             require(
-                balanceOf(msg.sender, transmutation.requiredIds[i]) >=
+                balances[_relicId][transmutation.requiredIds[i]] >=
                     transmutation.requiredAmounts[i],
                 "Not enough ingredients"
             );
-            _burn(
-                msg.sender,
+            _burnItem(
+                _relicId,
                 transmutation.requiredIds[i],
                 transmutation.requiredAmounts[i]
             );
         }
         // Create
         for (uint256 i = 0; i < transmutation.rewardIds.length; i++) {
-            _mint(
-                msg.sender,
+            _mintItem(
+                _relicId,
                 transmutation.rewardIds[i],
-                transmutation.rewardAmounts[i],
-                _data
+                transmutation.rewardAmounts[i]
             );
         }
 
         emit Transmutation(msg.sender, _recipeId);
     }
 
-    // In the case Templars wish to move some items outside of their relic
-    function transferItemTo(
-        address _to,
-        uint256 _itemId,
-        uint256 _amount,
-        bytes memory _data
-    ) external hasActiveRelic {
-        require(
-            balanceOf(msg.sender, _itemId) >= _amount,
-            "Not enough ingredients"
-        );
-        _safeTransferFrom(msg.sender, _to, _itemId, _amount, _data);
+    //------- Public -------//
+
+    function tokenURI(uint256 tokenId)
+        public
+        view
+        override(ERC721, ERC721URIStorage)
+        returns (string memory)
+    {
+        return super.tokenURI(tokenId);
     }
 
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        override(IERC165, ERC721, ERC721Enumerable)
+        returns (bool)
+    {
+        return super.supportsInterface(interfaceId);
+    }
+
+    function onERC1155Received(address, address, uint256, uint256, bytes memory) public virtual returns (bytes4) {
+        return this.onERC1155Received.selector;
+    }
+
+    function onERC1155BatchReceived(address, address, uint256[] memory, uint256[] memory, bytes memory) public virtual returns (bytes4) {
+        return this.onERC1155BatchReceived.selector;
+    }
+
+    function onERC721Received(address, address, uint256, bytes memory) public virtual returns (bytes4) {
+        return this.onERC721Received.selector;
+    }
+
+    function getRelicXP(uint256 _relicId) public view returns (uint256){
+        require(_exists(_relicId), "This Relic doesn't exist");
+        return relicXP[_relicId];
+    }
+
+   
     //------- Internal -------//
 
-    //------- Owner -------//
-
-    function addAuthority(address _toAdd) external onlyOwner{
-        relicAuthority[_toAdd] = true;
+    function _beforeTokenTransfer(address from, address to, uint256 tokenId)
+        internal
+        whenNotPaused
+        override(ERC721, ERC721Enumerable)
+    {
+        super._beforeTokenTransfer(from, to, tokenId);
     }
 
-    function removeAuthority(address _toRemove) external onlyOwner{
-        relicAuthority[_toRemove]= false;
+    function _burn(uint256 tokenId) internal override(ERC721, ERC721URIStorage) {
+        super._burn(tokenId);
+        
     }
+
+    function _mintItem(uint256 _relicId, uint256 _itemId, uint256 _amount) internal {
+        // mint on 1155 and send to Relic contract
+        ITEMS.mintFromRelic(_itemId, _amount);
+        // increase balance
+        balances[_relicId][_itemId]+=_amount;
+    }
+
+    function _burnItem(uint256 _relicId, uint256 _itemId, uint256 _amount) internal{
+        // burn on 1155
+        ITEMS.burnFromRelic(_itemId, _amount);
+        // remove balance
+        balances[_relicId][_itemId]-=_amount;
+    }
+
+
+     //------- Owner -------//
 
     function createRecipe(
         uint256 _recipeId,
@@ -133,45 +235,6 @@ contract Relic is
         recipes[_recipeId].rewardAmounts = _rewardAmounts;
     }
 
-    function setRelicCreator(address _new) external onlyOwner {
-        relicCreator = _new;
-    }
-
-    // create new items
-    function mint(
-        address account,
-        uint256 id,
-        uint256 amount,
-        bytes memory data
-    ) public onlyOwner {
-        _mint(account, id, amount, data);
-    }
-
-    // create new items batch
-    function mintBatch(
-        address to,
-        uint256[] memory ids,
-        uint256[] memory amounts,
-        bytes memory data
-    ) public onlyOwner {
-        _mintBatch(to, ids, amounts, data);
-    }
-
-    function _beforeTokenTransfer(
-        address operator,
-        address from,
-        address to,
-        uint256[] memory ids,
-        uint256[] memory amounts,
-        bytes memory data
-    ) internal override(ERC1155, ERC1155Supply) whenNotPaused {
-        super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
-    }
-
-    function setURI(string memory _newUri) public onlyOwner {
-        _setURI(_newUri);
-    }
-
     function pause() public onlyOwner {
         _pause();
     }
@@ -179,4 +242,28 @@ contract Relic is
     function unpause() public onlyOwner {
         _unpause();
     }
+
+    function safeMint(address to, string memory uri) public onlyOwner {
+        uint256 tokenId = _tokenIdCounter.current();
+        _tokenIdCounter.increment();
+        _safeMint(to, tokenId);
+        _setTokenURI(tokenId, uri);
+    }
+
+    function whitelistTemplar(address _toWhitelist) external onlyOwner{
+        whitelisted[_toWhitelist] = true;
+    }
+
+    function removeFromWhitelist(address _toRemove) external onlyOwner{
+        whitelisted[_toRemove] = false;
+    }
+
+    function setItemContract(address _itemContract) external onlyOwner{
+        ITEMS = IItems(_itemContract);
+    }
+
+    function setXPProvider(address _xpProvider) external onlyOwner{
+        experienceProvider = _xpProvider;
+    }
+
 }
