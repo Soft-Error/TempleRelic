@@ -28,15 +28,33 @@ contract RelicItems is
     mapping (address => bool) public whiteListedPartners;
     // @dev itemId for each partner
     mapping (address => uint256) public partnerId;
+    // whitelister contracts
+    mapping (address => bool) public whitelisters;
+    // whitelisted users
+    mapping (address => mapping (uint256 => bool)) public whiteListedUsers;
+    // URIs
+    mapping (uint256 => string) public tokenURIs;
 
     // @dev Relic.sol
     IRelic private RELIC;
 
+    modifier isRelic{
+        require(msg.sender==address(RELIC));
+        _;
+    }
+
     //------- External -------//
 
+    // users mint authorized item
+    function mintFromUser(uint256 _itemId) external nonReentrant {
+        require(whiteListedUsers[msg.sender][_itemId], "You cannot retrieve this item");
+        _mint(msg.sender, _itemId, 1,"");
+        whiteListedUsers[msg.sender][_itemId] = false;
+    }
+
     // @dev called from Relic when transfering items from Templar wallet into Relic
-    function equipItems(uint256[] memory _itemIds, uint256[] memory _amounts) external {
-        require(msg.sender==address(RELIC));
+    function equipItems(uint256[] memory _itemIds, uint256[] memory _amounts) external isRelic {
+        
 
         _beforeTokenTransfer(msg.sender, msg.sender, address(RELIC), _itemIds, _amounts, "");
 
@@ -45,8 +63,7 @@ contract RelicItems is
     }
 
      // @dev called from Relic when transfering items from Relic into Templar wallet
-    function unEquipItems(address _target, uint256[] memory _itemIds, uint256[] memory _amounts) external {
-        require(msg.sender==address(RELIC));
+    function unEquipItems(address _target, uint256[] memory _itemIds, uint256[] memory _amounts) external isRelic {
         
         _beforeTokenTransfer(address(RELIC), address(RELIC), _target, _itemIds, _amounts, "");
 
@@ -55,14 +72,12 @@ contract RelicItems is
     }
 
     // @dev called from Relic during Transmutations
-    function mintFromRelic(uint256 _itemId, uint256 _amount) external{
-        require(msg.sender==address(RELIC));
+    function mintFromRelic(uint256 _itemId, uint256 _amount) external isRelic{
         _mint(address(RELIC), _itemId, _amount,"");
     }
 
     // @dev called from Relic during Transmutations
-    function burnFromRelic(uint256 _itemId, uint256 _amount) external {
-        require(msg.sender==address(RELIC));
+    function burnFromRelic(uint256 _itemId, uint256 _amount) external isRelic{
         _burn(address(RELIC), _itemId, _amount);
     }
 
@@ -80,7 +95,14 @@ contract RelicItems is
         whiteListedPartners[msg.sender]=false;
     }
 
-    //------- Internal -------//
+    function uri(uint256 _id) override public view returns(string memory){
+        return tokenURIs[_id];
+    }
+
+    function whitelistUser(address _userAddress, uint256 _itemId) external {
+        require(whitelisters[msg.sender], "Not authorised");
+        whiteListedUsers[_userAddress][_itemId]= true;
+    }
 
     //------- Owner -------//
 
@@ -90,12 +112,26 @@ contract RelicItems is
         partnerId[_toAdd]=_assignedItemId;
     }
 
+    function whiteListItems(address _authorised, uint256[] memory _allowedIds) external onlyOwner{
+        for(uint i = 0;i<_allowedIds.length;i++){
+            partnerId[_authorised]=_allowedIds[i];
+        }
+    }
+
     function removePartner(address _toRemove) external onlyOwner{
         whiteListedPartners[_toRemove]= false;
     }
 
     function setRelic(address _relic) external onlyOwner {
         RELIC = IRelic(_relic);
+    }
+
+    function addWhitelister(address _relicWhitelist) external onlyOwner {
+        whitelisters[_relicWhitelist]=true;
+    }
+
+    function removeWhitelister(address _relicWhitelist) external onlyOwner {
+        whitelisters[_relicWhitelist]=false;
     }
 
     function mint(
@@ -127,8 +163,8 @@ contract RelicItems is
         super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
     }
 
-    function setURI(string memory _newUri) public onlyOwner {
-        _setURI(_newUri);
+    function setURI(string memory _newUri, uint256 _index) public onlyOwner {
+        tokenURIs[_index] = _newUri;
     }
 
     function pause() public onlyOwner {

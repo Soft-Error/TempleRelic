@@ -47,15 +47,16 @@ interface IItems {
     function mintFromRelic(uint256 _itemId, uint256 _amount) external; 
 }
 
-
 contract Relic is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable, ERC721Burnable,IERC1155Receiver, ReentrancyGuard  {
     constructor() ERC721("Relic", "RELIC") {}
-
+    using Strings for uint256;
     using Counters for Counters.Counter;
     Counters.Counter private _tokenIdCounter;
 
     // @dev Relic mint whitelist
     mapping (address => bool) public whitelisted;
+    // Contracts authorised to mint
+    mapping (address => bool) public whitelistedContracts;
     // @dev Relic content: RelicId => ItemId => Balance
     mapping (uint256 => mapping(uint256 => uint256)) public balances;
     // @dev Recipes
@@ -63,7 +64,7 @@ contract Relic is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable,
     // @dev Relic Experience Points
     mapping(uint256 => uint256) public relicXP;
 
-    string private uriSuffix;
+    string public BASE_URI;
     // @dev RelicItems.sol
     IItems private ITEMS;
     // @dev Contract providing experience points to Relics
@@ -151,16 +152,14 @@ contract Relic is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable,
         emit Transmutation(msg.sender, _recipeId);
     }
 
-    //------- Public -------//
-
-    function tokenURI(uint256 tokenId)
-        public
-        view
-        override(ERC721, ERC721URIStorage)
-        returns (string memory)
-    {
-        return super.tokenURI(tokenId);
+    // alows whitelisted contract to mint to
+    function mintFromContract(address _to) external {
+        require(whitelistedContracts[msg.sender], "This contract is not authorised to mint");
+        string memory baseURI = _baseURI();
+        safeMint(_to,baseURI);
     }
+
+    //------- Public -------//
 
     function supportsInterface(bytes4 interfaceId)
         public
@@ -186,6 +185,20 @@ contract Relic is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable,
     function getRelicXP(uint256 _relicId) public view returns (uint256){
         require(_exists(_relicId), "This Relic doesn't exist");
         return relicXP[_relicId];
+    }
+
+    function tokenURI(uint256 _relicId)
+        public
+        view
+        virtual
+        override(ERC721, ERC721URIStorage)
+        returns (string memory)
+    {
+        require(_exists(_relicId));
+        return
+            string(
+                abi.encodePacked(BASE_URI, _relicId.toString())
+            );
     }
 
    
@@ -264,6 +277,10 @@ contract Relic is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable,
 
     function setXPProvider(address _xpProvider) external onlyOwner{
         experienceProvider = _xpProvider;
+    }
+
+    function setBaseURI(string memory _newBaseURI) public onlyOwner {
+        BASE_URI = _newBaseURI;
     }
 
 }
