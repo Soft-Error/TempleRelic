@@ -99,6 +99,7 @@ contract RelicItems is
         return tokenURIs[_id];
     }
 
+    // TODO : check that this whitelister is authorised for this index !
     function whitelistUser(address _userAddress, uint256 _itemId) external {
         require(whitelisters[msg.sender], "Not authorised");
         whiteListedUsers[_userAddress][_itemId]= true;

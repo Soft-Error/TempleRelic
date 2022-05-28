@@ -82,10 +82,12 @@ contract Relic is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable,
 
     //------- External -------//
 
+    // TODO: CHECK WHITELISTING SYSTEM FOR RELICS !!!
     function mintRelic () external nonReentrant {
         require(whitelisted[msg.sender], "You cannot own a Relic yet");
-        string memory baseURI = _baseURI();
-        safeMint(msg.sender, baseURI);
+         uint256 tokenId = _tokenIdCounter.current();
+        _tokenIdCounter.increment();
+        _safeMint(msg.sender, tokenId);
 
         //remove whitelist
         whitelisted[msg.sender]=false;
@@ -155,8 +157,9 @@ contract Relic is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable,
     // alows whitelisted contract to mint to
     function mintFromContract(address _to) external {
         require(whitelistedContracts[msg.sender], "This contract is not authorised to mint");
-        string memory baseURI = _baseURI();
-        safeMint(_to,baseURI);
+         uint256 tokenId = _tokenIdCounter.current();
+        _tokenIdCounter.increment();
+        _safeMint(_to,tokenId);
     }
 
     //------- Public -------//
@@ -170,11 +173,11 @@ contract Relic is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable,
         return super.supportsInterface(interfaceId);
     }
 
-    function onERC1155Received(address, address, uint256, uint256, bytes memory) public virtual returns (bytes4) {
+    function onERC1155Received(address, address, uint256, uint256, bytes memory) public virtual override returns (bytes4) {
         return this.onERC1155Received.selector;
     }
 
-    function onERC1155BatchReceived(address, address, uint256[] memory, uint256[] memory, bytes memory) public virtual returns (bytes4) {
+    function onERC1155BatchReceived(address, address, uint256[] memory, uint256[] memory, bytes memory) public virtual override returns (bytes4) {
         return this.onERC1155BatchReceived.selector;
     }
 
@@ -256,11 +259,10 @@ contract Relic is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable,
         _unpause();
     }
 
-    function safeMint(address to, string memory uri) public onlyOwner {
+    function safeMint(address to) public onlyOwner {
         uint256 tokenId = _tokenIdCounter.current();
         _tokenIdCounter.increment();
         _safeMint(to, tokenId);
-        _setTokenURI(tokenId, uri);
     }
 
     function whitelistTemplar(address _toWhitelist) external onlyOwner{
