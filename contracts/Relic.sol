@@ -41,7 +41,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
 
 interface IItems {
-    function equipItems(uint256[] memory _itemIds, uint256[] memory _amounts) external;
+    function equipItems(address _ownerAdress, uint256[] memory _itemIds, uint256[] memory _amounts) external;
     function unEquipItems(address _target, uint256[] memory _itemIds, uint256[] memory _amounts) external;
     function burnFromRelic(uint256 _itemId, uint256 _amount) external;
     function mintFromRelic(uint256 _itemId, uint256 _amount) external; 
@@ -100,10 +100,10 @@ contract Relic is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable,
 
     // @dev Templar equips his items into his Relic
     function batchEquipItems(uint256 _targetRelic, uint256[] memory _itemIds, uint256[] memory _amounts) external nonReentrant {
-        // entry point, check that templar has enough items
+        require(msg.sender == ownerOf(_targetRelic), "You don't own this Relic");
 
         // transfer them to the Relic
-        ITEMS.equipItems(_itemIds, _amounts);
+        ITEMS.equipItems(msg.sender,_itemIds, _amounts);
         // update balances
         for(uint i=0; i<_itemIds.length;i++){
             balances[_targetRelic][_itemIds[i]]+= _amounts[i];
@@ -112,7 +112,7 @@ contract Relic is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable,
 
 
     function batchUnequipItems(uint256 _targetRelic, uint256[] memory _itemIds, uint256[] memory _amounts) external nonReentrant {
-        // entry point, check Relic balance
+        require(msg.sender == ownerOf(_targetRelic), "You don't own this Relic");
 
         // transfer to sender
         ITEMS.unEquipItems(msg.sender, _itemIds, _amounts);
@@ -162,6 +162,8 @@ contract Relic is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable,
         _safeMint(_to,tokenId);
     }
 
+    
+
     //------- Public -------//
 
     function supportsInterface(bytes4 interfaceId)
@@ -204,6 +206,10 @@ contract Relic is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable,
             );
     }
 
+    function getBalances(uint256 _relicId, uint256 _tokenId) external view returns(uint256){
+        require(_exists(_relicId),"This Relic doesn't exist.");
+        return balances[_relicId][_tokenId];
+    }
    
     //------- Internal -------//
 

@@ -6,6 +6,8 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "hardhat/console.sol";
+
 
 interface IRelic { 
     function getRelicId(address _owner) external view returns (uint256);
@@ -53,13 +55,11 @@ contract RelicItems is
     }
 
     // @dev called from Relic when transfering items from Templar wallet into Relic
-    function equipItems(uint256[] memory _itemIds, uint256[] memory _amounts) external isRelic {
+    function equipItems(address _ownerAddress, uint256[] memory _itemIds, uint256[] memory _amounts) external isRelic {
         
-
-        _beforeTokenTransfer(msg.sender, msg.sender, address(RELIC), _itemIds, _amounts, "");
-
+        _beforeTokenTransfer(msg.sender, _ownerAddress, address(RELIC), _itemIds, _amounts, "");
         // transfer to Relic
-        _safeBatchTransferFrom(msg.sender, address(RELIC), _itemIds, _amounts, "");
+        _safeBatchTransferFrom(_ownerAddress, address(RELIC), _itemIds, _amounts, "");
     }
 
      // @dev called from Relic when transfering items from Relic into Templar wallet
@@ -68,7 +68,7 @@ contract RelicItems is
         _beforeTokenTransfer(address(RELIC), address(RELIC), _target, _itemIds, _amounts, "");
 
         // transfer to target
-        _safeBatchTransferFrom( address(RELIC), msg.sender, _itemIds, _amounts, "");
+        _safeBatchTransferFrom( address(RELIC), _target, _itemIds, _amounts, "");
     }
 
     // @dev called from Relic during Transmutations

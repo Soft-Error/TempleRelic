@@ -30,8 +30,23 @@ describe("Greeter", function () {
     await relic.connect(add1).mintRelic();
     await items.connect(add1).mintFromUser(0);
 
-    console.log("balance is ", await items.balanceOf(add1.address,0));
-
+    console.log("add1 balance is ", await items.balanceOf(add1.address,0));
+    console.log("relic balance is: ", await relic.getBalances(0,0));
     await relic.connect(add1).batchEquipItems(0, [0],[1]);
+    console.log("add1 balance is ", await items.balanceOf(add1.address,0));
+    console.log("relic balance is: ", await relic.getBalances(0,0));
+
+    console.log("Transfering to add2");
+    await relic.connect(add1)["safeTransferFrom(address,address,uint256)"](add1.address,add2.address,0);
+    console.log("add1 balance is ", await items.balanceOf(add1.address,0));
+    console.log("add2 balance is ", await items.balanceOf(add2.address,0));
+    console.log("relic balance is: ", await relic.getBalances(0,0));
+
+    console.log("Unequipping");
+    await relic.connect(add1).batchUnequipItems(0, [0],[1]);
+    console.log("add1 balance is ", await items.balanceOf(add1.address,0));
+    console.log("add2 balance is ", await items.balanceOf(add2.address,0));
+    console.log("relic balance is: ", await relic.getBalances(0,0));
+
   });
 });
