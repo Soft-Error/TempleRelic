@@ -2,8 +2,16 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+// NOT IN USE
+
 interface IRelicItems{
     function whitelistUser(address _userAddress, uint256 _itemId) external;
+    function partnerMint(
+        address account,
+        uint256 id,
+        uint256 amount,
+        bytes memory data
+    ) external;
 }
 
 contract GameWhitelister is Ownable {
@@ -32,6 +40,10 @@ contract GameWhitelister is Ownable {
             s := mload(add(_sig,64))
             v := byte(0, mload(add(_sig,96)))
         }
+    }
+
+    function _mintItem(uint256 _itemId, address _to) internal {
+        RELICITEMS.partnerMint(_to,_itemId,1,"");
     }
 
     function setRelicItems(address _relicItems) external onlyOwner {
