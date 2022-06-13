@@ -95,7 +95,7 @@ contract Relic is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable,
 
     function renounceRelic(uint256 _relicId) external nonReentrant  {
         require(ownerOf(_relicId)==msg.sender);
-        _burn(_relicId);
+        super._burn(_relicId);
     }
 
     // @dev Templar equips his items into his Relic
@@ -206,9 +206,20 @@ contract Relic is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable,
             );
     }
 
-    function getBalances(uint256 _relicId, uint256 _tokenId) external view returns(uint256){
+    function getBalance(uint256 _relicId, uint256 _tokenId) external view returns(uint256){
         require(_exists(_relicId),"This Relic doesn't exist.");
         return balances[_relicId][_tokenId];
+    }
+
+    function getBalanceBatch(uint256 _relicId, uint256[] memory _tokenId) external view returns(uint256[] memory){
+        require(_exists(_relicId),"This Relic doesn't exist.");
+
+        uint256[] memory balancesToReturn = new uint256[](_tokenId.length);
+        for(uint i=0;i<_tokenId.length;i++){
+            balancesToReturn[i]=  balances[_relicId][_tokenId[i]];
+        }
+
+        return balancesToReturn;
     }
    
     //------- Internal -------//
@@ -270,8 +281,9 @@ contract Relic is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable,
         _tokenIdCounter.increment();
         _safeMint(to, tokenId);
     }
-
-    function whitelistTemplar(address _toWhitelist) external onlyOwner{
+    
+    // TODO: back to onlyOwner
+    function whitelistTemplar(address _toWhitelist) external {
         whitelisted[_toWhitelist] = true;
     }
 
