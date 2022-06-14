@@ -69,6 +69,8 @@ contract Relic is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable,
     IItems private ITEMS;
     // @dev Contract providing experience points to Relics
     address private experienceProvider;
+    // whitelister address
+    address private whitelisterAddress;
 
     struct Recipe {
         uint16 id;
@@ -162,7 +164,10 @@ contract Relic is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable,
         _safeMint(_to,tokenId);
     }
 
-    
+    function whitelistTemplar(address _toWhitelist) external {
+        require(msg.sender == whitelisterAddress, "Not authorised");
+        whitelisted[_toWhitelist] = true;
+    }
 
     //------- Public -------//
 
@@ -282,10 +287,7 @@ contract Relic is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable,
         _safeMint(to, tokenId);
     }
     
-    // TODO: back to onlyOwner
-    function whitelistTemplar(address _toWhitelist) external {
-        whitelisted[_toWhitelist] = true;
-    }
+ 
 
     function removeFromWhitelist(address _toRemove) external onlyOwner{
         whitelisted[_toRemove] = false;
@@ -297,6 +299,10 @@ contract Relic is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable,
 
     function setXPProvider(address _xpProvider) external onlyOwner{
         experienceProvider = _xpProvider;
+    }
+
+    function setTempleWhitelister(address _whiteliser) external onlyOwner{
+        whitelisterAddress = _whiteliser;
     }
 
     function setBaseURI(string memory _newBaseURI) public onlyOwner {
