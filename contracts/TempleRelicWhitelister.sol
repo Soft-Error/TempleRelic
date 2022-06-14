@@ -16,8 +16,6 @@ interface IRelic {
 contract TempleRelicWhitelister is Ownable {
     using ECDSA for bytes32;
 
-    mapping(address => mapping(uint256 => bool)) public usedNonces;
-
     address public signer;
     IRelic private RELIC;
 
