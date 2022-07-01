@@ -14,6 +14,11 @@ interface IRelic {
 }
 
 contract TempleRelicWhitelister is Ownable {
+    constructor(address _relic, address _signer) {                 
+              RELIC = IRelic(_relic);
+              signer=_signer;
+    } 
+
     using ECDSA for bytes32;
 
     address public signer;
@@ -24,6 +29,7 @@ contract TempleRelicWhitelister is Ownable {
         bytes memory signature
     ) {
         if (!_matchSigner(hash, signature)) revert InvalidSignature();
+        // TODO what's happening here?
         if (hash != _hashTransaction(msg.sender))
             revert HashFail();
         _;

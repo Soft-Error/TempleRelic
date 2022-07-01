@@ -17,8 +17,8 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
 });
 
 // const ARBI_KEY = process.env.DEPLOYER_KEY;
-const ETHERSCAN_API_KEY = "QNW2HXH4CT741NE21ETXMVDP6WYEWEMPGW";
-const RINKEBY_KEY = "e710aaa09d060e9a70e06e3cea6876494f7fa0f13f5ba7008ad001fc58b9cfa1";
+const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY;
+const RINKEBY_KEY = process.env.RINKEBY_KEY;
 /**
  * @type import('hardhat/config').HardhatUserConfig
  */
