@@ -25,14 +25,15 @@ contract RelicItems is
 {
     constructor() ERC1155("") {}
 
-    // @dev Partner Minting
+    // @dev Partner Minting directly on this contract 
     // @dev whitelisted partners
     mapping (address => bool) public whiteListedPartners;
     // @dev itemId for each partner
+    // TODO: switch this around
     mapping (address => uint256) public partnerId;
     // whitelister contracts
     mapping (address => bool) public whitelisters;
-    // whitelisted users
+    // whitelisted users so they can mint themselves
     mapping (address => mapping (uint256 => bool)) public whiteListedUsers;
     // URIs
     mapping (uint256 => string) public tokenURIs;
@@ -49,7 +50,8 @@ contract RelicItems is
 
     // users mint authorized item
     function mintFromUser(uint256 _itemId) external nonReentrant {
-        require(whiteListedUsers[msg.sender][_itemId], "You cannot retrieve this item");
+        // DEACTIVATED FOR TESTING
+        // require(whiteListedUsers[msg.sender][_itemId], "You cannot retrieve this item");
         _mint(msg.sender, _itemId, 1,"");
         whiteListedUsers[msg.sender][_itemId] = false;
     }
@@ -83,14 +85,14 @@ contract RelicItems is
 
      // @dev How partners mint their items
     function partnerMint(
-        address account,
-        uint256 id,
-        uint256 amount,
+        address _to,
+        uint256 _id,
+        uint256 _amount,
         bytes memory data
     ) external {
         require(whiteListedPartners[msg.sender], "You're not authorised to mint");
-        require(partnerId[msg.sender]==id, "This isn't your reserved itemId");
-        _mint(account, id, amount, data);
+        require(partnerId[msg.sender]==_id, "This isn't your reserved itemId");
+        _mint(_to, _id, _amount, data);
         // revoke whitelist
         whiteListedPartners[msg.sender]=false;
     }

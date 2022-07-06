@@ -86,7 +86,8 @@ contract Relic is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable,
 
     // TODO: CHECK WHITELISTING SYSTEM FOR RELICS !!!
     function mintRelic () external nonReentrant {
-        require(whitelisted[msg.sender], "You cannot own a Relic yet");
+        // DEACTIVATED FOR TESTING
+        // require(whitelisted[msg.sender], "You cannot own a Relic yet");
          uint256 tokenId = _tokenIdCounter.current();
         _tokenIdCounter.increment();
         _safeMint(msg.sender, tokenId);
