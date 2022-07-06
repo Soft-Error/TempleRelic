@@ -1,4 +1,4 @@
-// require("dotenv").config();
+require("dotenv").config();
 
 require("@nomiclabs/hardhat-etherscan");
 require("@nomiclabs/hardhat-waffle");
@@ -17,7 +17,7 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
 });
 
 // const ARBI_KEY = process.env.DEPLOYER_KEY;
-const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY;
+const ETHERSCAN_API_KEY = process.env.ARBISCAN_KEY;
 const RINKEBY_KEY = process.env.RINKEBY_KEY;
 /**
  * @type import('hardhat/config').HardhatUserConfig
