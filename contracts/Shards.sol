@@ -1,3 +1,4 @@
+//SPDX-License-Identifier: Unlicensed
 pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
@@ -15,7 +16,7 @@ interface IRelic {
     function ownerOf(uint256 tokenId) external view returns (address);
 }
 
-contract RelicItems is
+contract Shards is
     ERC1155,
     Ownable,
     Pausable,
@@ -37,14 +38,27 @@ contract RelicItems is
     mapping (address => mapping (uint256 => bool)) public whiteListedUsers;
     // URIs
     mapping (uint256 => string) public tokenURIs;
+    // Recipes
+    mapping(uint256 => Recipe) public recipes;
 
     // @dev Relic.sol
     IRelic private RELIC;
+
+    struct Recipe {
+        uint16 id;
+        uint256[] requiredIds;
+        uint256[] requiredAmounts;
+        uint256[] rewardIds;
+        uint256[] rewardAmounts;
+    }
 
     modifier isRelic{
         require(msg.sender==address(RELIC));
         _;
     }
+
+    event Transmutation(address Templar, uint256 recipeId);
+
 
     //------- External -------//
 
@@ -57,30 +71,62 @@ contract RelicItems is
     }
 
     // @dev called from Relic when transfering items from Templar wallet into Relic
-    function equipItems(address _ownerAddress, uint256[] memory _itemIds, uint256[] memory _amounts) external isRelic {
+    function equipItems(address _ownerAddress, uint256[] memory _shardIds, uint256[] memory _amounts) external isRelic {
         
-        _beforeTokenTransfer(msg.sender, _ownerAddress, address(RELIC), _itemIds, _amounts, "");
+        _beforeTokenTransfer(msg.sender, _ownerAddress, address(RELIC), _shardIds, _amounts, "");
         // transfer to Relic
-        _safeBatchTransferFrom(_ownerAddress, address(RELIC), _itemIds, _amounts, "");
+        _safeBatchTransferFrom(_ownerAddress, address(RELIC), _shardIds, _amounts, "");
     }
 
      // @dev called from Relic when transfering items from Relic into Templar wallet
-    function unEquipItems(address _target, uint256[] memory _itemIds, uint256[] memory _amounts) external isRelic {
+    function unEquipItems(address _target, uint256[] memory _shardIds, uint256[] memory _amounts) external isRelic {
         
-        _beforeTokenTransfer(address(RELIC), address(RELIC), _target, _itemIds, _amounts, "");
+        _beforeTokenTransfer(address(RELIC), address(RELIC), _target, _shardIds, _amounts, "");
 
         // transfer to target
-        _safeBatchTransferFrom( address(RELIC), _target, _itemIds, _amounts, "");
+        _safeBatchTransferFrom( address(RELIC), _target, _shardIds, _amounts, "");
     }
 
     // @dev called from Relic during Transmutations
-    function mintFromRelic(uint256 _itemId, uint256 _amount) external isRelic{
-        _mint(address(RELIC), _itemId, _amount,"");
+    function mintFromRelic(uint256 _shardId, uint256 _amount) external isRelic{
+        _mint(address(RELIC), _shardId, _amount,"");
     }
 
     // @dev called from Relic during Transmutations
-    function burnFromRelic(uint256 _itemId, uint256 _amount) external isRelic{
-        _burn(address(RELIC), _itemId, _amount);
+    function burnFromRelic(uint256 _shardId, uint256 _amount) external isRelic{
+        _burn(address(RELIC), _shardId, _amount);
+    }
+
+     // use receipes to transform ingredients into a new item
+    function transmute(uint256 _recipeId)
+        external
+        nonReentrant
+    {
+        require(RELIC.balanceOf(msg.sender)>0, "You must have at least one Relic to transmute Shards");
+        
+        Recipe memory transmutation = recipes[_recipeId];
+        // Destroy
+        for (uint256 i = 0; i < transmutation.requiredIds.length; i++) {
+            require(
+                balanceOf(msg.sender, transmutation.requiredIds[i]) >=
+                    transmutation.requiredAmounts[i],
+                "Not enough ingredients"
+            );
+        }
+        _burnBatch(
+                msg.sender,
+                transmutation.requiredIds,
+                transmutation.requiredAmounts
+        );
+        // Create
+        
+        _mintBatch(
+                msg.sender,
+                transmutation.rewardIds,
+                transmutation.rewardAmounts,
+                ""
+            );      
+        emit Transmutation(msg.sender, _recipeId);
     }
 
      // @dev How partners mint their items
@@ -93,8 +139,6 @@ contract RelicItems is
         require(whiteListedPartners[msg.sender], "You're not authorised to mint");
         require(partnerId[msg.sender]==_id, "This isn't your reserved itemId");
         _mint(_to, _id, _amount, data);
-        // revoke whitelist
-        whiteListedPartners[msg.sender]=false;
     }
 
     function uri(uint256 _id) override public view returns(string memory){
@@ -135,6 +179,20 @@ contract RelicItems is
 
     function removeWhitelister(address _relicWhitelist) external onlyOwner {
         whitelisters[_relicWhitelist]=false;
+    }
+
+    function createRecipe(
+        uint256 _recipeId,
+        uint256[] memory _requiredIds,
+        uint256[] memory _requiredAmounts,
+        uint256[] memory _rewardIds,
+        uint256[] memory _rewardAmounts
+    ) external onlyOwner {
+        recipes[_recipeId].id = uint16(_recipeId);
+        recipes[_recipeId].requiredIds = _requiredIds;
+        recipes[_recipeId].requiredAmounts = _requiredAmounts;
+        recipes[_recipeId].rewardIds = _rewardIds;
+        recipes[_recipeId].rewardAmounts = _rewardAmounts;
     }
 
     function mint(

@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 
-error HashFail();
 error HashUsed();
 error InvalidSignature();
 
@@ -14,47 +13,39 @@ interface IRelic {
 }
 
 contract TempleRelicWhitelister is Ownable {
-    constructor(address _relic, address _signer) {                 
-              RELIC = IRelic(_relic);
-              signer=_signer;
-    } 
+    // constructor(address _relic, address _signer) {                 
+    //           RELIC = IRelic(_relic);
+    //           signer=_signer;
+    // } 
 
     using ECDSA for bytes32;
 
-    address public signer;
+    address private signer;
     IRelic private RELIC;
+    mapping(bytes => bool) usedSignatures;
+
 
     modifier isValidSignature(
         bytes32 hash,
         bytes memory signature
     ) {
-        if (!_matchSigner(hash, signature)) revert InvalidSignature();
-        // TODO what's happening here?
-        if (hash != _hashTransaction(msg.sender))
-            revert HashFail();
+        if (_recoverSigner(hash, signature)!=signer) revert InvalidSignature();
+        if (usedSignatures[signature])
+            revert HashUsed();
         _;
     }
 
-    ///////////////// external /////////////////
+    ///////////////// external ///////////////// isValidSignature(_hash, _signature) bytes32 _hash,bytes memory _signature
 
-    function addToWhitelist(bytes32 _hash,bytes memory _signature, address _address) external isValidSignature(_hash, _signature)  {
-        RELIC.whitelistTemplar(_address);
+    function whitelistTemplar() external   {
+        RELIC.whitelistTemplar(msg.sender);
     } 
 
     ///////////////// private /////////////////
 
-    function _hashTransaction(
-        address sender
-    ) private pure returns (bytes32) {
-        return
-            keccak256(abi.encodePacked(sender))
-                .toEthSignedMessageHash();
-    }
-
-    function _matchSigner(bytes32 hash, bytes memory signature)
-        private view returns (bool)
-    {
-        return signer == hash.recover(signature);
+     function _recoverSigner(bytes32 _hash, bytes memory signature) public pure returns(address){
+        bytes32 messageDigest = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", _hash));
+        return ECDSA.recover(messageDigest,signature);
     }
 
     ///////////////// Owner /////////////////

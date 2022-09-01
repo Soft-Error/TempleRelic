@@ -40,9 +40,9 @@ import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
 
-interface IItems {
-    function equipItems(address _ownerAdress, uint256[] memory _itemIds, uint256[] memory _amounts) external;
-    function unEquipItems(address _target, uint256[] memory _itemIds, uint256[] memory _amounts) external;
+interface IShards {
+    function equipShard(address _ownerAdress, uint256[] memory _itemIds, uint256[] memory _amounts) external;
+    function unEquipShard(address _target, uint256[] memory _itemIds, uint256[] memory _amounts) external;
     function burnFromRelic(uint256 _itemId, uint256 _amount) external;
     function mintFromRelic(uint256 _itemId, uint256 _amount) external; 
 }
@@ -64,14 +64,12 @@ contract Relic is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable,
     mapping (address => bool) public whitelistedContracts;
     // @dev Relic content: RelicId => ItemId => Balance
     mapping (uint256 => mapping(uint256 => uint256)) public balances;
-    // @dev Recipes
-    mapping(uint256 => Recipe) public recipes;
     // @dev Relic Experience Points
     mapping(uint256 => uint256) public relicXP;
 
     mapping (Enclave => mapping (Rarity => string)) public BASE_URIS;
-    // @dev RelicItems.sol
-    IItems private ITEMS;
+    // @dev Shards.sol
+    IShards private SHARDS;
     // @dev Contract providing experience points to Relics
     address private experienceProvider;
     // whitelister address
@@ -79,20 +77,23 @@ contract Relic is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable,
     // rarity thresholds
     uint256[] private thresholds;
 
-    struct Recipe {
-        uint16 id;
-        uint256[] requiredIds;
-        uint256[] requiredAmounts;
-        uint256[] rewardIds;
-        uint256[] rewardAmounts;
-    }
-
-    event Transmutation(address Templar, uint256 recipeId);
 
     //------- External -------//
 
     // TODO: CHECK WHITELISTING SYSTEM FOR RELICS !!!
     function mintRelic (Enclave _selectedEnclave) external nonReentrant {
+        // DEACTIVATED FOR TESTING
+        require(whitelisted[msg.sender], "You cannot own a Relic yet");
+         uint256 tokenId = _tokenIdCounter.current();
+        enclaves[tokenId] = _selectedEnclave;
+        _tokenIdCounter.increment();
+        _safeMint(msg.sender, tokenId);
+
+        //remove whitelist
+        whitelisted[msg.sender]=false;
+    }
+
+     function mintRelicTest (Enclave _selectedEnclave) external nonReentrant {
         // DEACTIVATED FOR TESTING
         // require(whitelisted[msg.sender], "You cannot own a Relic yet");
          uint256 tokenId = _tokenIdCounter.current();
@@ -109,12 +110,12 @@ contract Relic is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable,
         super._burn(_relicId);
     }
 
-    // @dev Templar equips his items into his Relic
-    function batchEquipItems(uint256 _targetRelic, uint256[] memory _itemIds, uint256[] memory _amounts) external nonReentrant {
+    // @dev Templar equips his Shard into his Relic
+    function batchEquipShard(uint256 _targetRelic, uint256[] memory _itemIds, uint256[] memory _amounts) external nonReentrant {
         require(msg.sender == ownerOf(_targetRelic), "You don't own this Relic");
 
         // transfer them to the Relic
-        ITEMS.equipItems(msg.sender,_itemIds, _amounts);
+        SHARDS.equipShard(msg.sender,_itemIds, _amounts);
         // update balances
         for(uint i=0; i<_itemIds.length;i++){
             balances[_targetRelic][_itemIds[i]]+= _amounts[i];
@@ -122,47 +123,15 @@ contract Relic is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable,
     }
 
 
-    function batchUnequipItems(uint256 _targetRelic, uint256[] memory _itemIds, uint256[] memory _amounts) external nonReentrant {
+    function batchUnequipShard(uint256 _targetRelic, uint256[] memory _itemIds, uint256[] memory _amounts) external nonReentrant {
         require(msg.sender == ownerOf(_targetRelic), "You don't own this Relic");
 
         // transfer to sender
-        ITEMS.unEquipItems(msg.sender, _itemIds, _amounts);
+        SHARDS.unEquipShard(msg.sender, _itemIds, _amounts);
         // update balances
         for(uint i=0; i<_itemIds.length;i++){
             balances[_targetRelic][_itemIds[i]]-= _amounts[i];
         }
-    }
-
-     // use receipes to transform ingredients into a new item
-    function transmute(uint256 _relicId, uint256 _recipeId)
-        external
-        nonReentrant
-    {
-
-        Recipe memory transmutation = recipes[_recipeId];
-        // Destroy
-        for (uint256 i = 0; i < transmutation.requiredIds.length; i++) {
-            require(
-                balances[_relicId][transmutation.requiredIds[i]] >=
-                    transmutation.requiredAmounts[i],
-                "Not enough ingredients"
-            );
-            _burnItem(
-                _relicId,
-                transmutation.requiredIds[i],
-                transmutation.requiredAmounts[i]
-            );
-        }
-        // Create
-        for (uint256 i = 0; i < transmutation.rewardIds.length; i++) {
-            _mintItem(
-                _relicId,
-                transmutation.rewardIds[i],
-                transmutation.rewardAmounts[i]
-            );
-        }
-
-        emit Transmutation(msg.sender, _recipeId);
     }
 
     // alows whitelisted contract to mint to
@@ -265,44 +234,19 @@ contract Relic is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable,
         
     }
 
-    function _mintItem(uint256 _relicId, uint256 _itemId, uint256 _amount) internal {
-        // mint on 1155 and send to Relic contract
-        ITEMS.mintFromRelic(_itemId, _amount);
-        // increase balance
-        balances[_relicId][_itemId]+=_amount;
-    }
-
-    function _burnItem(uint256 _relicId, uint256 _itemId, uint256 _amount) internal{
-        // burn on 1155
-        ITEMS.burnFromRelic(_itemId, _amount);
-        // remove balance
-        balances[_relicId][_itemId]-=_amount;
-    }
-
     function _getRarity(uint256 _relicId) internal view returns(Rarity currRarity){
-        for(uint i =0; i<5;i++){
+        for(uint i = 0 ; i<4;i++){
             if(relicXP[_relicId]<thresholds[i]){
-                return Rarity(i-1);
+                return Rarity(i);
             }
         }
+        return Rarity(4);
     }
 
 
      //------- Owner -------//
 
-    function createRecipe(
-        uint256 _recipeId,
-        uint256[] memory _requiredIds,
-        uint256[] memory _requiredAmounts,
-        uint256[] memory _rewardIds,
-        uint256[] memory _rewardAmounts
-    ) external onlyOwner {
-        recipes[_recipeId].id = uint16(_recipeId);
-        recipes[_recipeId].requiredIds = _requiredIds;
-        recipes[_recipeId].requiredAmounts = _requiredAmounts;
-        recipes[_recipeId].rewardIds = _rewardIds;
-        recipes[_recipeId].rewardAmounts = _rewardAmounts;
-    }
+    
 
     function pause() public onlyOwner {
         _pause();
@@ -326,8 +270,8 @@ contract Relic is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable,
         whitelisted[_toRemove] = false;
     }
 
-    function setItemContract(address _itemContract) external onlyOwner{
-        ITEMS = IItems(_itemContract);
+    function setShardContract(address _shardsContract) external onlyOwner{
+        SHARDS = IShards(_shardsContract);
     }
 
     function setXPProvider(address _xpProvider) external onlyOwner{
