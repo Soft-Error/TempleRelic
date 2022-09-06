@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 // Fake whitelister representing an external protocol, whitelisted by Temple, that mints its own 1155 through RelicItems.sol
 
 interface IShards{
-    function whitelistUser(address _userAddress, uint256 _itemId) external;
      function partnerMint(
         address account,
         uint256 id,
@@ -15,16 +14,16 @@ interface IShards{
     ) external;
 }
 
-contract DummyWhitelister is Ownable {
+contract PartnerMinter is Ownable {
     IShards private SHARDS;
 
     // for testing
-    function whitelist(address _userToWhitelist, uint256 _itemId) external {
-        SHARDS.whitelistUser(_userToWhitelist, _itemId);
-    }
+    // function whitelist(address _userToWhitelist, uint256 _itemId) external {
+    //     SHARDS.whitelistUser(_userToWhitelist, _itemId);
+    // }
 
     // fake protocol users would go through here to mint their POAPs
-     function mintItem(uint256 _itemId, address _to) external {
+     function mintShard(uint256 _itemId, address _to) external {
         SHARDS.partnerMint(_to,_itemId,1,"");
     }
 

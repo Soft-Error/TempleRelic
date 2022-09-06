@@ -14,6 +14,7 @@ interface IRelic {
     function getRelicId(address _owner) external view returns (uint256);
     function hasRelic(address _owner) external view returns (bool);
     function ownerOf(uint256 tokenId) external view returns (address);
+    function balanceOf(address _owner) external view returns(uint256);
 }
 
 contract Shards is
@@ -31,7 +32,7 @@ contract Shards is
     mapping (address => bool) public whiteListedPartners;
     // @dev itemId for each partner
     // TODO: switch this around
-    mapping (address => uint256) public partnerId;
+    mapping (address => mapping (uint256=>bool)) public partnerAllowedIds;
     // whitelister contracts
     mapping (address => bool) public whitelisters;
     // whitelisted users so they can mint themselves
@@ -137,7 +138,7 @@ contract Shards is
         bytes memory data
     ) external {
         require(whiteListedPartners[msg.sender], "You're not authorised to mint");
-        require(partnerId[msg.sender]==_id, "This isn't your reserved itemId");
+        require(partnerAllowedIds[msg.sender][_id], "This isn't your reserved itemId");
         _mint(_to, _id, _amount, data);
     }
 
@@ -154,14 +155,13 @@ contract Shards is
     //------- Owner -------//
 
     // @dev authorise a partner to mint an item
-    function addPartner(address _toAdd, uint256 _assignedItemId) external onlyOwner{
+    function addPartner(address _toAdd) external onlyOwner{
         whiteListedPartners[_toAdd] = true;
-        partnerId[_toAdd]=_assignedItemId;
     }
 
-    function whiteListItems(address _authorised, uint256[] memory _allowedIds) external onlyOwner{
+    function whiteListItemsForPartner(address _partner, uint256[] memory _allowedIds, bool _allowed) external onlyOwner{
         for(uint i = 0;i<_allowedIds.length;i++){
-            partnerId[_authorised]=_allowedIds[i];
+            partnerAllowedIds[_partner][_allowedIds[i]]=_allowed;
         }
     }
 

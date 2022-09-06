@@ -35,20 +35,17 @@ contract TempleRelicWhitelister is Ownable {
         _;
     }
 
-    ///////////////// external ///////////////// isValidSignature(_hash, _signature) bytes32 _hash,bytes memory _signature
 
-    function whitelistTemplar() external   {
+    function whitelistTemplar(bytes32 _hash,bytes memory _signature) external isValidSignature(_hash, _signature)  {
         RELIC.whitelistTemplar(msg.sender);
     } 
 
-    ///////////////// private /////////////////
 
      function _recoverSigner(bytes32 _hash, bytes memory signature) public pure returns(address){
         bytes32 messageDigest = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", _hash));
         return ECDSA.recover(messageDigest,signature);
     }
 
-    ///////////////// Owner /////////////////
 
     function setSigner(address _newSigner) external onlyOwner{
         signer = _newSigner;

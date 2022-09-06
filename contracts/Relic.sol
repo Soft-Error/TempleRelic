@@ -1,33 +1,4 @@
-//                  / /\
-//                 / /  \
-//                / / /\ \
-//               / / /\ \ \
-//              / / /  \ \ \
-//             / / /    \ \ \
-//            / / /      \ \ \
-//           / / /        \ \ \
-//          / / /          \ \ \
-//         / / /   _   _    \ \ \
-//        / / /\  /\ \/ /\  /\ \ \
-//      .`.`.`\ \ \ \/ / / / /`.`.`.
-//    .`.`.` \ \ \ \/ / / / / / `.`.`.
-//  .`.`.`    \ \ \/ / /\/ / /    `.`.`.
-//.`.`.`       \ \ \/ /\/ / /       `.`.`.
-//`.`.`.        \_\  /\  /_/        .`.`.`
-//  `.`.`.      / /  \/  \ \      .`.`.`
-//    `.`.`.   / / /\ \/\ \ \   .`.`.`
-//      `.`.`./ / /\ \ \/\ \ \.`.`.`
-//        \ \ \/ / /\ \ \ \ \/ / /
-//         \ \ \/ /_/\ \ \ \/ / /
-//          \ \ \ \_\/\_\/ / / /
-//           \ \ \        / / /
-//            \ \ \      / / /
-//             \ \ \    / / /
-//              \ \ \  / / /
-//               \ \ \/ / /
-//                \ \ \/ /
-//                 \ \  /
-//                  \_\/
+
 pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
@@ -53,28 +24,18 @@ contract Relic is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable,
     using Counters for Counters.Counter;
     Counters.Counter private _tokenIdCounter;
 
-    // enclaves
     enum Enclave{ Logic, Structure, Order, Mystery, Chaos}
     mapping (uint256 => Enclave) enclaves;
-    // rarity
     enum Rarity{ Common, Uncommon, Rare, Epic, Legendary}
-    // @dev Relic mint whitelist
-    mapping (address => bool) public whitelisted;
-    // Contracts authorised to mint
-    mapping (address => bool) public whitelistedContracts;
-    // @dev Relic content: RelicId => ItemId => Balance
-    mapping (uint256 => mapping(uint256 => uint256)) public balances;
-    // @dev Relic Experience Points
-    mapping(uint256 => uint256) public relicXP;
+    mapping (address => bool) private whitelisted;
+    mapping (address => bool) private whitelistedContracts;
+    mapping (uint256 => mapping(uint256 => uint256)) private balances;
+    mapping(uint256 => uint256) private relicXP;
 
-    mapping (Enclave => mapping (Rarity => string)) public BASE_URIS;
-    // @dev Shards.sol
+    mapping (Enclave => mapping (Rarity => string)) private BASE_URIS;
     IShards private SHARDS;
-    // @dev Contract providing experience points to Relics
     address private experienceProvider;
-    // whitelister address
     address private whitelisterAddress;
-    // rarity thresholds
     uint256[] private thresholds;
 
 
