@@ -17,8 +17,8 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
 });
 
 // const ARBI_KEY = process.env.DEPLOYER_KEY;
-const ETHERSCAN_API_KEY = process.env.ARBISCAN_KEY;
-const RINKEBY_KEY = process.env.RINKEBY_KEY;
+// const ARBISCAN_API_KEY = process.env.ARBISCAN_KEY;
+const GOERLI_KEY = process.env.GOERLI_KEY;
 /**
  * @type import('hardhat/config').HardhatUserConfig
  */
@@ -36,9 +36,9 @@ module.exports = {
       chainId: 1337,
       allowUnlimitedContractSize: true
     },
-    arbitrumRinkeby: {
-      url: "https://rinkeby.arbitrum.io/rpc",
-      accounts: [RINKEBY_KEY]
+    arbitrumGoerli: {
+      url: "https://goerli-rollup.arbitrum.io/rpc",
+      accounts: [GOERLI_KEY]
     },
     // arbitrum: {
     //   url: "https://arb1.arbitrum.io/rpc",
@@ -46,7 +46,17 @@ module.exports = {
     // }
   },
   etherscan: {
-    apiKey: ETHERSCAN_API_KEY,
+    apiKey: process.env.ETHERSCAN_API_KEY,
+    customChains: [
+      {
+       network: 'arbitrumGoerli',
+            chainId: 421613,
+            urls: {
+                apiURL: 'https://api-goerli.arbiscan.io/api',
+                browserURL: 'https://goerli.arbiscan.io',
+            },
+      }
+    ]
   },
  
 };
