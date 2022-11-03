@@ -13,10 +13,6 @@ interface IRelic {
 }
 
 contract TempleRelicWhitelister is Ownable {
-    // constructor(address _relic, address _signer) {                 
-    //           RELIC = IRelic(_relic);
-    //           signer=_signer;
-    // } 
 
     using ECDSA for bytes32;
 

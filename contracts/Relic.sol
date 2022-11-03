@@ -54,18 +54,6 @@ contract Relic is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable,
         whitelisted[msg.sender]=false;
     }
 
-     function mintRelicTest (Enclave _selectedEnclave) external nonReentrant {
-        // DEACTIVATED FOR TESTING
-        // require(whitelisted[msg.sender], "You cannot own a Relic yet");
-         uint256 tokenId = _tokenIdCounter.current();
-        enclaves[tokenId] = _selectedEnclave;
-        _tokenIdCounter.increment();
-        _safeMint(msg.sender, tokenId);
-
-        //remove whitelist
-        whitelisted[msg.sender]=false;
-    }
-
     function renounceRelic(uint256 _relicId) external nonReentrant  {
         require(ownerOf(_relicId)==msg.sender);
         super._burn(_relicId);
@@ -95,7 +83,7 @@ contract Relic is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable,
         }
     }
 
-    // alows whitelisted contract to mint to
+    // alows whitelisted contract to mint to an address
     function mintFromContract(address _to, Enclave _selectedEnclave) external {
         require(whitelistedContracts[msg.sender], "This contract is not authorised to mint");
          uint256 tokenId = _tokenIdCounter.current();
@@ -104,6 +92,7 @@ contract Relic is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable,
         _safeMint(_to,tokenId);
     }
 
+    // external temple contract whitelisting for Relic minting
     function whitelistTemplar(address _toWhitelist) external {
         require(msg.sender == whitelisterAddress, "Not authorised");
         whitelisted[_toWhitelist] = true;
@@ -111,6 +100,7 @@ contract Relic is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable,
 
     // FOR TEST
     function givePoints(uint256 _amount, uint256 _relicId)external {
+        require(msg.sender == whitelisterAddress, "Not authorised");
         relicXP[_relicId]+=_amount;
     }
 

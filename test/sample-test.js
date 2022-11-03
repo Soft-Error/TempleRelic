@@ -20,15 +20,16 @@ describe("Greeter", function () {
     templeWL = await TempleWL.deploy();
 
     await relic.setShardContract(shards.address);
+    await relic.setThresholds([10,100,1000,10000]);
+    await relic.setTempleWhitelister(templeWL.address);
+    
     await shards.setRelic(relic.address);
-    await shards.addPartner(partnerMinter.address);
+    await shards.addPartner(partnerMinter.address, true);
     await shards.whiteListItemsForPartner(partnerMinter.address, [0,1], true);
     // await relic.whitelistTemplar(add1.address);
     await partnerMinter.setRelicShards(shards.address);
 
-    await relic.setThresholds([10,100,1000,10000]);
 
-    await relic.setTempleWhitelister(templeWL.address);
 
     await templeWL.setRelic(relic.address);
     await templeWL.setSigner(owner.address);

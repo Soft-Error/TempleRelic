@@ -29,12 +29,9 @@ contract Shards is
 
     // @dev Partner Minting directly on this contract 
     // @dev whitelisted partners
-    mapping (address => bool) public whiteListedPartners;
+    mapping (address => bool) public partnerMinters;
     // @dev itemId for each partner
-    // TODO: switch this around
     mapping (address => mapping (uint256=>bool)) public partnerAllowedIds;
-    // whitelister contracts
-    mapping (address => bool) public whitelisters;
     // whitelisted users so they can mint themselves
     mapping (address => mapping (uint256 => bool)) public whiteListedUsers;
     // URIs
@@ -63,7 +60,7 @@ contract Shards is
 
     //------- External -------//
 
-    // users mint authorized item
+    // users mint authorized item front Nexus
     function mintFromUser(uint256 _itemId) external nonReentrant {
         // DEACTIVATED FOR TESTING
         // require(whiteListedUsers[msg.sender][_itemId], "You cannot retrieve this item");
@@ -130,14 +127,14 @@ contract Shards is
         emit Transmutation(msg.sender, _recipeId);
     }
 
-     // @dev How partners mint their items
+     // @dev How partners mint their items, logic implemented on their side
     function partnerMint(
         address _to,
         uint256 _id,
         uint256 _amount,
         bytes memory data
     ) external {
-        require(whiteListedPartners[msg.sender], "You're not authorised to mint");
+        require(partnerMinters[msg.sender], "You're not authorised to mint");
         require(partnerAllowedIds[msg.sender][_id], "This isn't your reserved itemId");
         _mint(_to, _id, _amount, data);
     }
@@ -148,37 +145,26 @@ contract Shards is
 
     // TODO : check that this whitelister is authorised for this index !
     function whitelistUser(address _userAddress, uint256 _itemId) external {
-        require(whitelisters[msg.sender], "Not authorised");
+        require(partnerMinters[msg.sender], "Not authorised");
+        require(partnerAllowedIds[msg.sender][_itemId], "This isn't your reserved itemId");
         whiteListedUsers[_userAddress][_itemId]= true;
     }
 
     //------- Owner -------//
 
     // @dev authorise a partner to mint an item
-    function addPartner(address _toAdd) external onlyOwner{
-        whiteListedPartners[_toAdd] = true;
+    function addPartner(address _partnerMinter, bool _flag) external onlyOwner {
+        partnerMinters[_partnerMinter]=_flag;
     }
-
+    
     function whiteListItemsForPartner(address _partner, uint256[] memory _allowedIds, bool _allowed) external onlyOwner{
         for(uint i = 0;i<_allowedIds.length;i++){
             partnerAllowedIds[_partner][_allowedIds[i]]=_allowed;
         }
     }
 
-    function removePartner(address _toRemove) external onlyOwner{
-        whiteListedPartners[_toRemove]= false;
-    }
-
     function setRelic(address _relic) external onlyOwner {
         RELIC = IRelic(_relic);
-    }
-
-    function addWhitelister(address _relicWhitelist) external onlyOwner {
-        whitelisters[_relicWhitelist]=true;
-    }
-
-    function removeWhitelister(address _relicWhitelist) external onlyOwner {
-        whitelisters[_relicWhitelist]=false;
     }
 
     function createRecipe(
