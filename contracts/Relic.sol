@@ -24,7 +24,7 @@ contract Relic is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable,
     using Counters for Counters.Counter;
     Counters.Counter private _tokenIdCounter;
 
-    enum Enclave{ Logic, Structure, Order, Mystery, Chaos}
+    enum Enclave{ Chaos, Mystery, Logic, Order, Structure}
     mapping (uint256 => Enclave) enclaves;
     enum Rarity{ Common, Uncommon, Rare, Epic, Legendary}
     mapping (address => bool) private whitelisted;
@@ -41,10 +41,9 @@ contract Relic is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable,
 
     //------- External -------//
 
-    // TODO: CHECK WHITELISTING SYSTEM FOR RELICS !!!
     function mintRelic (Enclave _selectedEnclave) external nonReentrant {
         // DEACTIVATED FOR TESTING
-        require(whitelisted[msg.sender], "You cannot own a Relic yet");
+        // require(whitelisted[msg.sender], "You cannot own a Relic yet");
          uint256 tokenId = _tokenIdCounter.current();
         enclaves[tokenId] = _selectedEnclave;
         _tokenIdCounter.increment();
