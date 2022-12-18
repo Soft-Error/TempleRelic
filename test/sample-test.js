@@ -162,10 +162,17 @@ describe("Greeter", function () {
     await partnerMinter.mintShard(0,add1.address);
     await partnerMinter.mintShard(1,add1.address);
     console.log("balance0: ", await shards.balanceOf(add1.address, 0));
+
+
+    // equip 
+    // await shards.connect(add1).setApprovalForAll(shards.address,true);
+    await relic.connect(add1).batchEquipShard(0, [0],[1]);
+
+    console.log("balance0: ", await shards.balanceOf(add1.address, 0));
     console.log("balance1: ", await shards.balanceOf(add1.address, 1));
     console.log("balance2: ", await shards.balanceOf(add1.address, 2));
 
-    await shards.connect(add1).transmute(0);
+    // await shards.connect(add1).transmute(0);
 
     console.log("balance0: ", await shards.balanceOf(add1.address, 0));
     console.log("balance1: ", await shards.balanceOf(add1.address, 1));

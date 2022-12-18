@@ -18,13 +18,13 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
 
 // const ARBI_KEY = process.env.DEPLOYER_KEY;
 // const ARBISCAN_API_KEY = process.env.ARBISCAN_KEY;
-const GOERLI_KEY = process.env.GOERLI_KEY;
+const GOERLI_KEY = process.env.LUX_KEY;
 /**
  * @type import('hardhat/config').HardhatUserConfig
  */
 module.exports = {
   solidity: {
-    version: "0.8.4",
+    version: "0.8.13",
     defaultNetwork: "hardhat",
     optimizer: {
       enabled: true,

@@ -69,7 +69,7 @@ contract Shards is
     }
 
     // @dev called from Relic when transfering items from Templar wallet into Relic
-    function equipItems(address _ownerAddress, uint256[] memory _shardIds, uint256[] memory _amounts) external isRelic {
+    function equipShard(address _ownerAddress, uint256[] memory _shardIds, uint256[] memory _amounts) external isRelic {
         
         _beforeTokenTransfer(msg.sender, _ownerAddress, address(RELIC), _shardIds, _amounts, "");
         // transfer to Relic
@@ -77,7 +77,7 @@ contract Shards is
     }
 
      // @dev called from Relic when transfering items from Relic into Templar wallet
-    function unEquipItems(address _target, uint256[] memory _shardIds, uint256[] memory _amounts) external isRelic {
+    function unEquipShard(address _target, uint256[] memory _shardIds, uint256[] memory _amounts) external isRelic {
         
         _beforeTokenTransfer(address(RELIC), address(RELIC), _target, _shardIds, _amounts, "");
 

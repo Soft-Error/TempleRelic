@@ -18,6 +18,8 @@ interface IShards {
     function mintFromRelic(uint256 _itemId, uint256 _amount) external; 
 }
 
+// TODO: REDO URI SYS
+
 contract Relic is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable, ERC721Burnable,IERC1155Receiver, ReentrancyGuard  {
     constructor() ERC721("Relic", "RELIC") {}
     using Strings for uint256;
@@ -32,7 +34,7 @@ contract Relic is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable,
     mapping (uint256 => mapping(uint256 => uint256)) private balances;
     mapping(uint256 => uint256) private relicXP;
 
-    mapping (Enclave => mapping (Rarity => string)) private BASE_URIS;
+    mapping (Rarity => string) private BASE_URIS;
     IShards private SHARDS;
     address private experienceProvider;
     address private whitelisterAddress;
@@ -51,11 +53,6 @@ contract Relic is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable,
 
         //remove whitelist
         whitelisted[msg.sender]=false;
-    }
-
-    function renounceRelic(uint256 _relicId) external nonReentrant  {
-        require(ownerOf(_relicId)==msg.sender);
-        super._burn(_relicId);
     }
 
     // @dev Templar equips his Shard into his Relic
@@ -144,7 +141,7 @@ contract Relic is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable,
 
         return
             string(
-                abi.encodePacked(BASE_URIS[enclaves[_relicId]][_getRarity(_relicId)], _relicId.toString())
+                abi.encodePacked(BASE_URIS[_getRarity(_relicId)], uint256(enclaves[_relicId]).toString())
             );
     }
 
@@ -232,14 +229,8 @@ contract Relic is ERC721, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable,
         whitelisterAddress = _whiteliser;
     }
 
-    function setBaseURI(string[] memory _newBaseURIs) public onlyOwner {
-        uint256 counter =0;
-        for(uint e=0;e<5;e++){
-            for(uint r=0;r<5;r++){
-                BASE_URIS[Enclave(e)][Rarity(r)]=_newBaseURIs[counter];
-                counter++;
-            }
-        }
+    function setBaseURI(uint256 _id, string memory _newBaseURIs) public onlyOwner {
+       BASE_URIS[Rarity(_id)]= _newBaseURIs;
     }
 
 }
