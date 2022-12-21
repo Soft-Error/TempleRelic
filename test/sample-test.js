@@ -1,7 +1,8 @@
 const { expect } = require("chai");
+const { BigNumber } = require("ethers");
 const { ethers } = require("hardhat");
 
-let Relic, relic, Shards, shards, PartnerMinter, partnerMinter, TempleWL, templeWL;
+let Relic, relic, Shards, shards, PartnerMinter, partnerMinter, TempleWL, templeWL, Dummycoin, dummycoin;
 let owner, add1, add2; 
 
 describe("Greeter", function () {
@@ -16,8 +17,11 @@ describe("Greeter", function () {
     PartnerMinter = await ethers.getContractFactory("PartnerMinter");
     partnerMinter = await PartnerMinter.deploy();
 
-    TempleWL = await ethers.getContractFactory("TempleRelicWhitelister");
+    TempleWL = await ethers.getContractFactory("TempleSacrifice");
     templeWL = await TempleWL.deploy();
+
+    Dummycoin = await ethers.getContractFactory("dummycoin");
+    dummycoin = await Dummycoin.deploy();
 
     await relic.setShardContract(shards.address);
     await relic.setThresholds([10,100,1000,10000]);
@@ -29,10 +33,11 @@ describe("Greeter", function () {
     // await relic.whitelistTemplar(add1.address);
     await partnerMinter.setRelicShards(shards.address);
 
+    await dummycoin.connect(add1).getmooni();
 
-
-    await templeWL.setRelic(relic.address);
-    await templeWL.setSigner(owner.address);
+    await templeWL.setAddresses(relic.address, dummycoin.address);
+    let timmme = await templeWL.test2();
+    await templeWL.setOriginTime(timmme);
 
   });
 
@@ -153,7 +158,15 @@ describe("Greeter", function () {
     console.log("Final signature: ", signature);
 
     console.log("balance relic: ", await relic.balanceOf(add1.address));
-    await templeWL.connect(add1).whitelistTemplar(hashedMessage,signature);
+
+    await network.provider.send("evm_increaseTime", [8640000]);
+    await network.provider.send("evm_mine"); // this one 
+
+    // SACRIFICE
+    console.log("PRICE TEST: ", await templeWL.test());
+    
+    await dummycoin.connect(add1).approve(templeWL.address, "1000000000000000000000");
+    await templeWL.connect(add1).sacrifice();
     await relic.connect(add1).mintRelic(0);
     console.log("balance relic: ", await relic.balanceOf(add1.address));
 

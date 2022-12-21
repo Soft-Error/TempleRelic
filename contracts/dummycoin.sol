@@ -6,6 +6,6 @@ contract dummycoin is ERC20 {
     constructor() ERC20("Dummy", "DUMB") {}
 
     function getmooni() external{
-        _mint(msg.sender,1000);
+        _mint(msg.sender,1000000000000000000000);
     }
 }
