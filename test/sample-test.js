@@ -36,7 +36,7 @@ describe("Greeter", function () {
     await dummycoin.connect(add1).getmooni();
 
     await templeWL.setAddresses(relic.address, dummycoin.address);
-    let timmme = await templeWL.test2();
+    let timmme = (await ethers.provider.getBlock("latest")).timestamp;
     await templeWL.setOriginTime(timmme);
 
   });
@@ -163,7 +163,7 @@ describe("Greeter", function () {
     await network.provider.send("evm_mine"); // this one 
 
     // SACRIFICE
-    console.log("PRICE TEST: ", await templeWL.test());
+    // console.log("PRICE TEST: ", await templeWL.test());
     
     await dummycoin.connect(add1).approve(templeWL.address, "1000000000000000000000");
     await templeWL.connect(add1).sacrifice();
