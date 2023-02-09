@@ -40,10 +40,10 @@ module.exports = {
       url: "https://goerli-rollup.arbitrum.io/rpc",
       accounts: [GOERLI_KEY]
     },
-    // arbitrum: {
-    //   url: "https://arb1.arbitrum.io/rpc",
-    //   accounts: [ARBI_KEY]
-    // }
+    arbitrum: {
+      url: "https://arb1.arbitrum.io/rpc",
+      accounts: [GOERLI_KEY]
+    }
   },
   etherscan: {
     apiKey: process.env.ETHERSCAN_API_KEY,

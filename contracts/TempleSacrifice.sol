@@ -27,7 +27,7 @@ interface IRelic {
     function whitelistTemplar(address _toWhitelist) external;
 }
 
-contract TempleSacrifice is Ownable {
+contract TempleSacrifice is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     IRelic public RELIC;
@@ -35,7 +35,7 @@ contract TempleSacrifice is Ownable {
     uint256 private originTime;
     uint256 public customPrice;
 
-    function sacrifice() external {
+    function sacrifice() external nonReentrant {
         uint256 allowance = TEMPLE.allowance(msg.sender, address(this));
         require(allowance >= getPrice(), "Check $TEMPLE allowance");
         TEMPLE.safeTransferFrom(msg.sender, 0x000000000000000000000000000000000000dEaD, getPrice());

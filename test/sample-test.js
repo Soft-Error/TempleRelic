@@ -24,7 +24,7 @@ describe("Greeter", function () {
     dummycoin = await Dummycoin.deploy();
 
     await relic.setShardContract(shards.address);
-    await relic.setThresholds([10,100,1000,10000]);
+    await relic.setThresholds([1000,10000,100000,1000000]); 
     await relic.setTempleWhitelister(templeWL.address);
     
     await shards.setRelic(relic.address);
