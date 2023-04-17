@@ -79,15 +79,14 @@ contract Relic is
         Legendary
     }
     mapping(address => bool) public whitelisted;
-    mapping(address => bool) private whitelistedContracts;
+    mapping(address => bool) public whitelistedContracts;
     mapping(uint256 => mapping(uint256 => uint256)) public balances;
     mapping(uint256 => uint256) public relicXP;
 
     mapping(Rarity => string) private BASE_URIS;
     IShards public SHARDS;
-    address private experienceProvider;
-    address private whitelisterAddress;
-    uint256[] private thresholds;
+    address public whitelisterAddress;
+    uint256[] public thresholds;
 
     event MintRelic(address to, uint256 enclave);
     event GivePoints(uint256 relicId, uint256 points);
@@ -318,12 +317,13 @@ contract Relic is
         SHARDS = IShards(_shardsContract);
     }
 
-    function setXPProvider(address _xpProvider) external onlyOwner {
-        experienceProvider = _xpProvider;
+    function setTempleWhitelister(address _whitelister) external onlyOwner {
+        whitelisterAddress = _whitelister;
     }
 
-    function setTempleWhitelister(address _whiteliser) external onlyOwner {
-        whitelisterAddress = _whiteliser;
+    function setWhitelistedContract(address _contract, bool _flag) external onlyOwner {
+           whitelistedContracts[_contract]=_flag;
+
     }
 
     function setBaseURI(uint256 _id, string memory _newBaseURIs)

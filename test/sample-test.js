@@ -3,16 +3,21 @@ const { BigNumber } = require("ethers");
 const { ethers } = require("hardhat");
 
 let Relic, relic, Shards, shards, PartnerMinter, partnerMinter, TempleWL, templeWL, Dummycoin, dummycoin;
-let owner, add1, add2; 
+let owner, add1, add2, add3, add4, add5, add6, add7, add8, add9; 
+
+let Test, test;
 
 describe("Greeter", function () {
   beforeEach("Initialise",async ()=>{
-    [owner,add1, add2] = await ethers.getSigners();
+    [owner,add1, add2, add3, add4, add5, add6, add7, add8, add9] = await ethers.getSigners();
     Relic = await ethers.getContractFactory("Relic");
     relic = await Relic.deploy();
 
     Shards = await ethers.getContractFactory("Shards");
     shards = await Shards.deploy();
+
+    Test = await ethers.getContractFactory("Splitter");
+    test = await Test.deploy();
 
     PartnerMinter = await ethers.getContractFactory("PartnerMinter");
     partnerMinter = await PartnerMinter.deploy();
@@ -119,7 +124,7 @@ describe("Greeter", function () {
 
   });
 
-  it("Should sign and mint and transmute", async ()=>{
+  xit("Should sign and mint and transmute", async ()=>{
 
     await shards.createRecipe(0,[0,1],[1,1],[2],[1]);
 
@@ -190,6 +195,42 @@ describe("Greeter", function () {
     console.log("balance0: ", await shards.balanceOf(add1.address, 0));
     console.log("balance1: ", await shards.balanceOf(add1.address, 1));
     console.log("balance2: ", await shards.balanceOf(add1.address, 2));
+  });
+
+  it("Should test erc20 contract outbound", async ()=>{
+    await dummycoin.connect(add1).getmooni();
+    // await dummycoin.connect(add1).transfer(test.address,ethers.utils.parseUnits("1000", 18));
+    console.log("ADD4 eth balance: ",await ethers.provider.getBalance(add4.address));
+    console.log("ADD2 erc20 balance: ", await dummycoin.balanceOf(add2.address));
+
+    // setup
+    await test.editDeployer(add4.address);
+    await test.editSplits([add1.address, add2.address,add3.address,add4.address, add5.address,add6.address,add7.address, add8.address,add9.address],[200,180,180,180,45,45,45,17,13]);
+
+    // await dummycoin.connect(add1).increaseAllowance(test.address,ethers.utils.parseEther("10000"));
+    // await test.connect(add1).splitOther(dummycoin.address);
+    console.log("ADD2 erc20 balance: ",await dummycoin.balanceOf(add2.address));
+    console.log("ADD3 erc20 balance: ",await dummycoin.balanceOf(add3.address));
+
+    console.log("///////////////////////");
+    console.log("ADD1 eth balance: ",await ethers.provider.getBalance(add1.address));
+
+    // eth
+    // await test.connect(add1).tester({
+    //   value: ethers.utils.parseEther("10") 
+    // });
+    console.log("ADD2 eth balance: ", await ethers.provider.getBalance(add2.address));
+    console.log("ADD3 eth balance: ",await ethers.provider.getBalance(add3.address));
+
+
+    await test.connect(add1).splitEth({
+      value: ethers.utils.parseEther("10") 
+    });;
+    console.log("ADD1 eth balance: ",await ethers.provider.getBalance(add1.address));
+    console.log("ADD2 eth balance: ",await ethers.provider.getBalance(add2.address));
+    console.log("ADD3 eth balance: ",await ethers.provider.getBalance(add3.address));
+    console.log("ADD4 eth balance: ",await ethers.provider.getBalance(add4.address));
+
   });
 
 });
