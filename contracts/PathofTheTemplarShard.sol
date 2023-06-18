@@ -7,6 +7,7 @@ import "./PartnerMinter.sol/";
 interface IRelic {
     function balanceOf(address) external returns (uint256);
     function tokenOfOwnerByIndex(address, uint256) external returns (uint256);
+    function getRelicInfos(uint256 enclaves) external returns (uint256);
 }
 
 interface IShards {
@@ -19,12 +20,33 @@ interface IShards {
 }
 
 contract PathofTheTemplarShard is ownable {
+
     IShards private SHARDS,
     IRelic private RELIC,
-    uint256 public SHARD_ID = 2;
+    uint256[] public SHARD_ID = [1, 2, 3, 4, 5];
 
-function mintPathofthetemplarshard() public canMint() {
+modifier canMint () {
+    uint256 
+}
 
+function mintChaosShard() external canMint {
+    SHARDS.partnerMint(msg.sender, SHARD_ID, 1, "");
+}
+
+function mintMysteryShard() external canMint {
+    SHARDS.partnerMint(msg.sender, SHARD_ID, 2, "");
+}
+
+function mintLogicShard() external canMint {
+    SHARDS.partnerMint(msg.sender, SHARD_ID, 3, "");
+}
+
+function mintStructureShard() external canMint {
+    SHARDS.partnerMint(msg.sender, SHARD_ID, 4, "");
+}
+
+function mintOrderShard() external canMint {
+    SHARDS.partnerMint(msg.sender, SHARD_ID, 5, "");
 }
 
 function signedQuestCompletedMessage(QuestCompletedMessageReq calldata req, bytes calldata signature) external {
