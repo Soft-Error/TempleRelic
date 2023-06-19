@@ -21,32 +21,18 @@ interface IShards {
 
 contract PathofTheTemplarShard is ownable {
 
+    event SignedQuestCompletedMessageHash(bytes32 hash);
+
     IShards private SHARDS,
     IRelic private RELIC,
     uint256[] public SHARD_ID = [1, 2, 3, 4, 5];
 
-modifier canMint () {
-    uint256 
-}
+mapping (msg.sender => bool) public canMint
+mapping (uint => enclaves) signedQuestCompletedMessage
 
-function mintChaosShard() external canMint {
+function mintPathofthetemplarShard() external canMint {
     SHARDS.partnerMint(msg.sender, SHARD_ID, 1, "");
-}
-
-function mintMysteryShard() external canMint {
-    SHARDS.partnerMint(msg.sender, SHARD_ID, 2, "");
-}
-
-function mintLogicShard() external canMint {
-    SHARDS.partnerMint(msg.sender, SHARD_ID, 3, "");
-}
-
-function mintStructureShard() external canMint {
-    SHARDS.partnerMint(msg.sender, SHARD_ID, 4, "");
-}
-
-function mintOrderShard() external canMint {
-    SHARDS.partnerMint(msg.sender, SHARD_ID, 5, "");
+    require(msg.sender(signedQuestCompletedMessage)) == "true";
 }
 
 function signedQuestCompletedMessage(QuestCompletedMessageReq calldata req, bytes calldata signature) external {
@@ -91,6 +77,7 @@ function signedQuestCompletedMessage(QuestCompletedMessageReq calldata req, byte
             keccak256(bytes(_input.name)),
             keccak256(bytes(_input.version)),
             _input.chainId
+            emit SignedQuestCompletedMessageHash(hash);
         ));
     }
 
