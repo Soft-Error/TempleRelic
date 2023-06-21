@@ -2,7 +2,7 @@ pragma solidity ^0.8.13;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "./PartnerMinter.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
 
 interface IRelic {
     function balanceOf(address) external returns (uint256);
@@ -22,32 +22,57 @@ interface IShards {
 contract PathofTheTemplarShard is Ownable {
     address authorizedMinter;
 
-event SignedQuestCompletedMessageHash(bytes32 hash);
-
     IShards private SHARDS;
     IRelic private RELIC;
+
     uint256[] public SHARD_ID = [1, 2, 3, 4, 5];
 
     using Counters for Counters.Counter;
-    
+
     bytes32 immutable DOMAIN_SEPARATOR;
 
-mapping (msg.sender => bool) public canMint;
-mapping (uint256 => enclaves) signedQuestCompletedMessage;
+    struct QuestCompletedMessageReq {
+        address signer;
+        address authorizedMinter;
+        uint256 deadline;
+        uint256 nonce;
+    }
+
+    struct EIP712Domain {
+        string name;
+        string version;
+        uint256 chainId;
+    }
+
+    event SignedQuestCompletedMessage(address);
+    event SignedQuestCompletedMessageHash(bytes32 hash);
+
+    error TooManyMessages();
+    error MintForbidden();
+    error DeadlineExpired(uint256 lateBy);
+    error InvalidNonce(address account);
+    error InvalidSignature(address account);
+
+    modifier canMint() {
+        if (msg.sender != authorizedMinter) {
+            revert MintForbidden();
+        }
+
+        _;
+    }
+
+mapping(address => bool) public authorisedMinters;
+mapping(bytes32 => address) signedQuestCompletedMessage;
+mapping(address => uint256[]) public questCompletedMessageBy;
+mapping(address => Counters.Counter) public nonces;
 
 function mintPathofthetemplarShard() external canMint {
     SHARDS.partnerMint(msg.sender, SHARD_ID, 1, "");
 }
 
-modifier canMint() {
-    require(msg.sender == authorisedMinter, "You are not allowed to mint");
-
-    _;
-}
-
  function setQuestCompletedMessage(uint256[] calldata signer) external {
         _setQuestCompletedMessage(msg.sender, signer);
-    }
+}
 
 function _setQuestCompletedMessage(address authorizedMinter, uint256[] calldata signer) internal {
     if (signer.length > 1) {
@@ -55,23 +80,17 @@ function _setQuestCompletedMessage(address authorizedMinter, uint256[] calldata 
     }
 
     questCompletedMessageBy[authorizedMinter] = signer;
-    emit UpdateQuestCompletedMessage(authorizedMinter, signer);
 }
 
-    struct QuestCompletedMessageReq {
-        address signer;
-        uint256 deadline;
-        uint256 nonce;
-    }
-
+//This function creates a hashed message for the message signer to confirm their identity
 function relayedSignQuestCompletedMessageFor(QuestCompletedMessageReq calldata req, bytes calldata signature) external {
-
+    //concatenates the three values into a digest via a keccak256 hash function
     bytes32 digest = keccak256(abi.encodePacked(
         "\x19\x01",
         DOMAIN_SEPARATOR,
         hash(req)
         ));
-
+        //recover the signer with the signature by comparing the public key with the private key
         (address signer, ECDSA.RecoverError err) = ECDSA.tryRecover(digest, signature);
         if (err != ECDSA.RecoverError.NoError) {
             revert InvalidSignature(req.authorizedMinter);
@@ -81,10 +100,10 @@ function relayedSignQuestCompletedMessageFor(QuestCompletedMessageReq calldata r
         if (_useNonce(req.authorizedMinter) != req.nonce) revert InvalidNonce(req.authorizedMinter);
 
         _setQuestCompletedMessage(req.deadline, req.nonce);
-        emit SignedQuestCompletedMessageHash(digest); 
+        emit SignedQuestCompletedMessageHash(digest);
+        emit SignedQuestCompletedMessage(authorizedMinter, signer);
+ 
     }
-
-    event SignedQuestCompletedMessageHash(bytes32 hash);
 
     /**
      * "Consume a nonce": return the current value and increment.
@@ -95,12 +114,6 @@ function relayedSignQuestCompletedMessageFor(QuestCompletedMessageReq calldata r
         nonce.increment();
     }
 
-    struct EIP712Domain {
-        string name;
-        string version;
-        uint256 chainId;
-    }
-
     bytes32 constant EIP712DOMAIN_TYPEHASH = keccak256("EIP712Domain(string name,string version,uint256 chainId)");
 
     function hash(EIP712Domain memory _input) internal pure returns (bytes32) { 
@@ -108,7 +121,7 @@ function relayedSignQuestCompletedMessageFor(QuestCompletedMessageReq calldata r
             EIP712DOMAIN_TYPEHASH,
             keccak256(bytes(_input.name)),
             keccak256(bytes(_input.version)),
-            _input.chainId,
+            _input.chainId
         ));
     }
 
