@@ -4,12 +4,21 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 
+/**
+* @notice interfaced from Relic.sol to obtain address balance of token, 
+* token Id owned by owner at given index of token list, 
+* information from Relic.sol regarding enclave type.
+*/
 interface IRelic {
     function balanceOf(address) external returns (uint256);
     function tokenOfOwnerByIndex(address, uint256) external returns (uint256);
     function getRelicInfos(uint256 enclaves) external returns (uint256);
 }
 
+/**
+* @notice interfaced from Shards.sol to obtain address, token Id, amount owned and stored 
+*
+ */
 interface IShards {
     function partnerMint(
         address account,
@@ -18,7 +27,12 @@ interface IShards {
         bytes memory data
     ) external;
 }
-
+/**
+* @title This contract aims to allow a user to mint 
+* an Enclave Shard corresponding to the Enclave quest 
+* upon reaching the winning state of Path of the Temple.
+* It uses EIP712 to verify that a user has signed the hashed message
+*/
 contract PathofTheTemplarShard is Ownable {
     address authorizedMinter;
 
@@ -66,8 +80,19 @@ mapping(bytes32 => address) signedQuestCompletedMessage;
 mapping(address => uint256[]) public questCompletedMessageBy;
 mapping(address => Counters.Counter) public nonces;
 
+constructor() {
+        authorizedMinter = msg.sender;
+
+        EIP712Domain memory domain = EIP712Domain({
+            name: "PathofTheTemplarShard",
+            version: "1",
+            chainId: 421611
+        });
+        DOMAIN_SEPARATOR = hash(domain);
+    }
+
 function mintPathofthetemplarShard() external canMint {
-    SHARDS.partnerMint(msg.sender, SHARD_ID, 1, "");
+    SHARDS.partnerMint(msg.sender, SHARD_ID[0], 1, "");
 }
 
  function setQuestCompletedMessage(uint256[] calldata signer) external {
@@ -82,7 +107,7 @@ function _setQuestCompletedMessage(address authorizedMinter, uint256[] calldata 
     questCompletedMessageBy[authorizedMinter] = signer;
 }
 
-//This function creates a hashed message for the message signer to confirm their identity
+//This function creates a hashed message for the message signer to confirm their signature
 function relayedSignQuestCompletedMessageFor(QuestCompletedMessageReq calldata req, bytes calldata signature) external {
     //concatenates the three values into a digest via a keccak256 hash function
     bytes32 digest = keccak256(abi.encodePacked(
@@ -101,7 +126,7 @@ function relayedSignQuestCompletedMessageFor(QuestCompletedMessageReq calldata r
 
         _setQuestCompletedMessage(req.deadline, req.nonce);
         emit SignedQuestCompletedMessageHash(digest);
-        emit SignedQuestCompletedMessage(authorizedMinter, signer);
+        emit SignedQuestCompletedMessage(authorizedMinter);
  
     }
 
