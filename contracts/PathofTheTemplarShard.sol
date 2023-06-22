@@ -1,5 +1,6 @@
 pragma solidity ^0.8.13;
 
+import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
@@ -33,19 +34,29 @@ interface IShards {
 * upon reaching the winning state of Path of the Temple.
 * It uses EIP712 to verify that a user has signed the hashed message
 */
-contract PathofTheTemplarShard is Ownable {
-    address authorizedMinter;
+contract PathofTheTemplarShard is 
+    Ownable,
+    AccessControl 
+{
 
     IShards private SHARDS;
     IRelic private RELIC;
 
+    bytes32 public constant CHAOS_SHARD_MINTER = keccak256("CHAOS_SHARD_MINTER");
+    bytes32 public constant MYSTERY_SHARD_MINTER = keccak256("MYSTERY_SHARD_MINTER");
+    bytes32 public constant LOGIC_SHARD_MINTER = keccak256("LOGIC_SHARD_MINTER");
+    bytes32 public constant STRUCTURE_SHARD_MINTER = keccak256("STRUCTURE_SHARD_MINTER");  
+    bytes32 public constant ORDER_SHARD_MINTER = keccak256("ORDER_SHARD_MINTER");
+
+    address authorizedMinters;
     uint256[] public SHARD_ID = [1, 2, 3, 4, 5];
 
     using Counters for Counters.Counter;
 
-    bytes32 immutable DOMAIN_SEPARATOR;
+    bytes32 immutable public DOMAIN_SEPARATOR;
 
     struct QuestCompletedMessageReq {
+        uint256[] enclaves;
         address signer;
         address authorizedMinter;
         uint256 deadline;
@@ -63,25 +74,25 @@ contract PathofTheTemplarShard is Ownable {
 
     error TooManyMessages();
     error MintForbidden();
+
     error DeadlineExpired(uint256 lateBy);
     error InvalidNonce(address account);
     error InvalidSignature(address account);
 
     modifier canMint() {
-        if (msg.sender != authorizedMinter) {
+        if (msg.sender != authorizedMinters) {
             revert MintForbidden();
         }
 
         _;
     }
 
-mapping(address => bool) public authorisedMinters;
 mapping(bytes32 => address) signedQuestCompletedMessage;
 mapping(address => uint256[]) public questCompletedMessageBy;
 mapping(address => Counters.Counter) public nonces;
 
 constructor() {
-        authorizedMinter = msg.sender;
+        authorizedMinters = msg.sender;
 
         EIP712Domain memory domain = EIP712Domain({
             name: "PathofTheTemplarShard",
@@ -97,6 +108,7 @@ function mintPathofthetemplarShard() external canMint {
 
  function setQuestCompletedMessage(uint256[] calldata signer) external {
         _setQuestCompletedMessage(msg.sender, signer);
+        emit SignedQuestCompletedMessage(authorizedMinters);
 }
 
 function _setQuestCompletedMessage(address authorizedMinter, uint256[] calldata signer) internal {
@@ -117,30 +129,39 @@ function relayedSignQuestCompletedMessageFor(QuestCompletedMessageReq calldata r
         ));
         //recover the signer with the signature by comparing the public key with the private key
         (address signer, ECDSA.RecoverError err) = ECDSA.tryRecover(digest, signature);
+        // Check for error in signature recovery process
         if (err != ECDSA.RecoverError.NoError) {
             revert InvalidSignature(req.authorizedMinter);
         }
+        // Check for error if deadline is expired
         if (block.timestamp > req.deadline) revert DeadlineExpired(block.timestamp - req.deadline);
+        // Check for error if authorized Minter matches signer
         if (signer != req.authorizedMinter) revert InvalidSignature(req.authorizedMinter);
+        // Checks for error if nonce is valid for authorized Minter
         if (_useNonce(req.authorizedMinter) != req.nonce) revert InvalidNonce(req.authorizedMinter);
-
-        _setQuestCompletedMessage(req.deadline, req.nonce);
+        // Set the provided deadline and nonce for the Set Quest Completed Message.
+        _setQuestCompletedMessage(req.authorizedMinter, req.enclaves);
         emit SignedQuestCompletedMessageHash(digest);
-        emit SignedQuestCompletedMessage(authorizedMinter);
  
     }
 
     /**
      * "Consume a nonce": return the current value and increment.
      */
-    function _useNonce(address _owner) internal returns (uint256 current) {
-        Counters.Counter storage nonce = nonces[_owner];
+    function _useNonce(address _authorizedMinter) internal returns (uint256 current) {
+        Counters.Counter storage nonce = nonces[_authorizedMinter];
         current = nonce.current();
         nonce.increment();
     }
 
+/**
+* @notice defined EIP712 domain type Hash with name, version and chain Id.
+*/
     bytes32 constant EIP712DOMAIN_TYPEHASH = keccak256("EIP712Domain(string name,string version,uint256 chainId)");
-
+/**
+* @dev hash function stores custom data type QuestCompletedMessageReq as input
+* in a bytes32 hash from data input values of name, version and chainId.
+*/
     function hash(EIP712Domain memory _input) internal pure returns (bytes32) { 
         return keccak256(abi.encode(
             EIP712DOMAIN_TYPEHASH,
@@ -150,8 +171,15 @@ function relayedSignQuestCompletedMessageFor(QuestCompletedMessageReq calldata r
         ));
     }
 
+/**
+* @notice defined Signed Quest Completed Message type Hash with signer, expected deadline and expected nonce 
+*/
     bytes32 constant SIGNEDQUESTCOMPLETEDMESSAGE_TYPEHASH = keccak256("QuestCompletedMessageReq(address signer,uint256 deadline,uint256 nonce)");
 
+/**
+* @dev hash function stores custom data type QuestCompletedMessageReq with input values
+* of signer, deadline and nonce into a bytes32 hash.
+*/
     function hash(QuestCompletedMessageReq memory _input) internal pure returns (bytes32) {
         return keccak256(abi.encode(
             SIGNEDQUESTCOMPLETEDMESSAGE_TYPEHASH,
