@@ -36,14 +36,14 @@ module.exports = {
       chainId: 1337,
       allowUnlimitedContractSize: true
     },
-    arbitrumGoerli: {
-      url: "https://goerli-rollup.arbitrum.io/rpc",
-      accounts: [GOERLI_KEY]
-    },
-    arbitrum: {
-      url: "https://arb1.arbitrum.io/rpc",
-      accounts: [GOERLI_KEY]
-    }
+   // arbitrumGoerli: {
+   //   url: "https://goerli-rollup.arbitrum.io/rpc",
+   //   accounts: process.env.LUX_KEY ? [process.env.LUX_KEY] : [],
+   // },
+   // arbitrum: {
+   //   url: "https://arb1.arbitrum.io/rpc",
+   //   accounts: process.env.LUX_KEY ? [process.env.LUX_KEY] : [],
+   // }
   },
   etherscan: {
     apiKey: process.env.ETHERSCAN_API_KEY,

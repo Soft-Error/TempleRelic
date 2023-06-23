@@ -41,24 +41,17 @@ contract PathofTheTemplarShard is
 
     IShards private SHARDS;
     IRelic private RELIC;
-
-    bytes32 public constant CHAOS_SHARD_MINTER = keccak256("CHAOS_SHARD_MINTER");
-    bytes32 public constant MYSTERY_SHARD_MINTER = keccak256("MYSTERY_SHARD_MINTER");
-    bytes32 public constant LOGIC_SHARD_MINTER = keccak256("LOGIC_SHARD_MINTER");
-    bytes32 public constant STRUCTURE_SHARD_MINTER = keccak256("STRUCTURE_SHARD_MINTER");  
-    bytes32 public constant ORDER_SHARD_MINTER = keccak256("ORDER_SHARD_MINTER");
-
-    address authorizedMinters;
+    //Mapping SHARD_ID to the individual enclaves
     uint256[] public SHARD_ID = [1, 2, 3, 4, 5];
+    string[] public ENCLAVE = ["", "chaosEnclave", "mysteryEnclave", "logicEnclave", "structureEnclave", "orderEnclave"];
 
     using Counters for Counters.Counter;
 
     bytes32 immutable public DOMAIN_SEPARATOR;
-
-    struct QuestCompletedMessageReq {
-        uint256[] enclaves;
+    //added bytes 32 digest to this struct
+    struct QuestCompleteReq {
         address signer;
-        address authorizedMinter;
+        bytes32 digest;
         uint256 deadline;
         uint256 nonce;
     }
@@ -69,9 +62,6 @@ contract PathofTheTemplarShard is
         uint256 chainId;
     }
 
-    event SignedQuestCompletedMessage(address);
-    event SignedQuestCompletedMessageHash(bytes32 hash);
-
     error TooManyMessages();
     error MintForbidden();
 
@@ -80,17 +70,18 @@ contract PathofTheTemplarShard is
     error InvalidSignature(address account);
 
     modifier canMint() {
-        if (msg.sender != authorizedMinters) {
+        if (msg.sender != signer) {
             revert MintForbidden();
         }
 
         _;
     }
 
+mapping(uint256 => string) public shardToEnclave;
 mapping(bytes32 => address) signedQuestCompletedMessage;
 mapping(address => uint256[]) public questCompletedMessageBy;
 mapping(address => Counters.Counter) public nonces;
-
+//TODO Fix the msg.sender as the only authorizedMinter
 constructor() {
         authorizedMinters = msg.sender;
 
@@ -102,25 +93,39 @@ constructor() {
         DOMAIN_SEPARATOR = hash(domain);
     }
 
+function establishMapping() public {
+    // Establish the mapping between SHARD_ID and ENCLAVE
+    for (uint256 i = 1; i < SHARD_ID.length; i++) {
+    shardToEnclave[SHARD_ID[i]] = ENCLAVE[i];
+    }
+}
+
 function mintPathofthetemplarShard() external canMint {
-    SHARDS.partnerMint(msg.sender, SHARD_ID[0], 1, "");
+    SHARDS.partnerMint(msg.sender, SHARD_ID[], 1, "");
 }
 
- function setQuestCompletedMessage(uint256[] calldata signer) external {
-        _setQuestCompletedMessage(msg.sender, signer);
-        emit SignedQuestCompletedMessage(authorizedMinters);
-}
+function getEnclaveForShard(uint256 shardId) public view returns (string memory) {
+        return shardToEnclave[shardId];
+    }
 
-function _setQuestCompletedMessage(address authorizedMinter, uint256[] calldata signer) internal {
+function setAuthorization(uint256[] calldata signer) external {
+        _setAuthorization(msg.sender, signer);
+}
+//TODO I believe I should remove the second variable
+function _setAuthorization(address account, uint256[] calldata signer) internal {
     if (signer.length > 1) {
         revert TooManyMessages();
     }
-
-    questCompletedMessageBy[authorizedMinter] = signer;
+//TODO State the right variable
+    questCompletedBy[owner] = signer;
 }
 
 //This function creates a hashed message for the message signer to confirm their signature
-function relayedSignQuestCompletedMessageFor(QuestCompletedMessageReq calldata req, bytes calldata signature) external {
+//TODO Change and shorten naming convention of functions and parameter. Some of the codebase
+//can be further shortened as some parts are not relevant to my use case.
+//The keccak256 method to obtain the bytes32 digest below is fine but I need to adjust the definitions of
+//user, account, signer, msg.sender and authorizedMinter
+function relayedSignatureFor(QuestCompleteReq calldata req, bytes calldata signature) external {
     //concatenates the three values into a digest via a keccak256 hash function
     bytes32 digest = keccak256(abi.encodePacked(
         "\x19\x01",
@@ -131,25 +136,24 @@ function relayedSignQuestCompletedMessageFor(QuestCompletedMessageReq calldata r
         (address signer, ECDSA.RecoverError err) = ECDSA.tryRecover(digest, signature);
         // Check for error in signature recovery process
         if (err != ECDSA.RecoverError.NoError) {
-            revert InvalidSignature(req.authorizedMinter);
+            revert InvalidSignature(req.account);
         }
         // Check for error if deadline is expired
         if (block.timestamp > req.deadline) revert DeadlineExpired(block.timestamp - req.deadline);
         // Check for error if authorized Minter matches signer
-        if (signer != req.authorizedMinter) revert InvalidSignature(req.authorizedMinter);
+        if (signer != req.account) revert InvalidSignature(req.account);
         // Checks for error if nonce is valid for authorized Minter
-        if (_useNonce(req.authorizedMinter) != req.nonce) revert InvalidNonce(req.authorizedMinter);
+        if (_useNonce(req.account) != req.nonce) revert InvalidNonce(req.account);
         // Set the provided deadline and nonce for the Set Quest Completed Message.
-        _setQuestCompletedMessage(req.authorizedMinter, req.enclaves);
-        emit SignedQuestCompletedMessageHash(digest);
+        _setAuthorization(req.authorizedMinter, req.enclaves);
  
     }
 
     /**
      * "Consume a nonce": return the current value and increment.
      */
-    function _useNonce(address _authorizedMinter) internal returns (uint256 current) {
-        Counters.Counter storage nonce = nonces[_authorizedMinter];
+    function _useNonce(address _owner) internal returns (uint256 current) {
+        Counters.Counter storage nonce = nonces[_owner];
         current = nonce.current();
         nonce.increment();
     }
@@ -174,15 +178,15 @@ function relayedSignQuestCompletedMessageFor(QuestCompletedMessageReq calldata r
 /**
 * @notice defined Signed Quest Completed Message type Hash with signer, expected deadline and expected nonce 
 */
-    bytes32 constant SIGNEDQUESTCOMPLETEDMESSAGE_TYPEHASH = keccak256("QuestCompletedMessageReq(address signer,uint256 deadline,uint256 nonce)");
+    bytes32 constant SIGNEDQUESTCOMPLETE_TYPEHASH = keccak256("QuestCompleteReq(address signer,uint256 deadline,uint256 nonce)");
 
 /**
 * @dev hash function stores custom data type QuestCompletedMessageReq with input values
 * of signer, deadline and nonce into a bytes32 hash.
 */
-    function hash(QuestCompletedMessageReq memory _input) internal pure returns (bytes32) {
+    function hash(AuthorizationReq memory _input) internal pure returns (bytes32) {
         return keccak256(abi.encode(
-            SIGNEDQUESTCOMPLETEDMESSAGE_TYPEHASH,
+            SIGNEDQUESTCOMPLETE_TYPEHASH,
             _input.signer,
             _input.deadline,
             _input.nonce
