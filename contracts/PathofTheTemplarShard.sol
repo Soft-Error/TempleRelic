@@ -7,8 +7,7 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 
 /**
-* @notice interfaced from Relic.sol to obtain address balance of token, 
-* token Id owned by owner at given index of token list, 
+* @notice interfaced from Relic.sol to obtain 
 * information from Relic.sol regarding enclave type.
 */
 interface IRelic {
@@ -16,7 +15,8 @@ interface IRelic {
 }
 
 /**
-* @notice interfaced from Shards.sol to obtain address, token Id, amount owned and stored 
+* @notice interfaced from Shards.sol to obtain address, token Id, amount owned and stored data
+* for future use
 *
 */
 interface IShards {
@@ -48,25 +48,31 @@ contract PathofTheTemplarShard is AccessControl {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 immutable public DOMAIN_SEPARATOR;
 
+    // MintRequest struct has variables of account, deadline and nonce types.
     struct MintRequest {
         address account;
         uint256 deadline;
         uint256 nonce;
     }
 
+    // Defining EIP712 Domain struct with variables of name, version and chain id.
     struct EIP712Domain {
         string name;
         string version;
         uint256 chainId;
     }
 
+    //error definitions
     error TooManyMessages();
     error MintForbidden();
 
+    // error definitions for passing checks related to the hashed message and signature
     error DeadlineExpired(uint256 lateBy);
     error InvalidNonce(address account);
     error InvalidSignature(address account);
 
+    // modifier applied so that if the address calling the mint function is not the signer, the tx
+    // revert with the Mint Forbidden message.
     modifier canMint() {
         if (msg.sender != signer ) {
             revert MintForbidden("MintForbidden");
@@ -114,13 +120,14 @@ function getEnclaveForShard(uint256 shardId) public view returns (string memory)
 
 // Function takes two parameters request and signature 
 function relayMintRequestFor(MintRequest calldata request, bytes calldata signature) external {
-    //concatenates the three values into a digest via a keccak256 hash function
+    //concatenates the three values into a hash readable as a digest via a keccak256 hash function
     bytes32 digest = keccak256(abi.encodePacked(
         "\x19\x01",
         DOMAIN_SEPARATOR,
         hash(request)
         ));
-        //recover the signer with the signature by comparing the public key with the private key
+        // stores address into signer and error recovery in err and use recover to verify digest and signature
+        // is from address calling function
         (address signer, ECDSA.RecoverError err) = ECDSA.tryRecover(digest, signature);
         // Check for error in signature recovery process
         if (err != ECDSA.RecoverError.NoError) {
@@ -128,17 +135,18 @@ function relayMintRequestFor(MintRequest calldata request, bytes calldata signat
         }
         // Check for error if deadline is expired
         if (block.timestamp > request.deadline) revert DeadlineExpired(block.timestamp - request.deadline);
-        // Check for error if authorized Minter matches signer
+        // Check for error if requesting address matches signer
         if (signer != request.account) revert InvalidSignature(request.account);
-        // Checks for error if nonce is valid for authorized Minter
+        // Checks for error if nonce is valid for requesting address
         if (_useNonce(request.account) != request.nonce) revert InvalidNonce(request.account);
-        // Set the provided deadline and nonce for the Set Quest Completed Message.
+        // Set MINTER ROLE to request.account
         grantRole(MINTER_ROLE, request.account);
  
     }
 
     /**
-     * "Consume a nonce": return the current value and increment.
+     * "Consume a nonce": return the current value and increment. This would be done by the dev wallet
+     * which is owner of the contract (ie trusted TEMPLE EOA)
      */
     function _useNonce(address _owner) internal returns (uint256 current) {
         Counters.Counter storage nonce = nonces[_owner];
@@ -160,11 +168,7 @@ function relayMintRequestFor(MintRequest calldata request, bytes calldata signat
     }
 
 /**
-* @notice defined Signed Quest Completed Message type Hash with signer, expected deadline and expected nonce 
-*/
-/**
-* @dev hash function stores custom data type QuestCompletedMessageReq with input values
-* of signer, deadline and nonce into a bytes32 hash.
+* @dev functions creates a hash from signer, deadline and nonce and returns it as a bytes32 hash.
 */
     function hash(MintRequest memory _input) internal pure returns (bytes32) {
         return keccak256(abi.encode(
@@ -175,6 +179,7 @@ function relayMintRequestFor(MintRequest calldata request, bytes calldata signat
         ));
     }
 
+    // function creates a hash from input and returns it as a bytes32 hash
     function hash(uint256[] memory _input) internal pure returns (bytes32) {
         return keccak256(abi.encodePacked(_input));
     }
