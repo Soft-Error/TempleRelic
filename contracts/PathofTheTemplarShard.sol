@@ -13,7 +13,14 @@ import "@openzeppelin/contracts/utils/Counters.sol";
 interface IRelic {
     function getRelicInfos(uint256 enclaves) external returns (uint256);
 }
-
+/**
+Intended contract specs:
+* 1) Interface with Relic and Shards
+* 2) Implement EIP 712 to concatenate signed message, expected deadline and expected nonce into a hash
+* 3) Recover the address of the account calling the function using the digest and signature through this hash
+* 4) Map Shards to each enclave
+* 5) Allow a verified signer to mint the chosen Enclave Shard
+*/
 /**
 * @notice interfaced from Shards.sol to obtain address, token Id, amount owned and stored data
 * for future use
