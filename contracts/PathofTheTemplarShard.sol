@@ -1,7 +1,8 @@
 pragma solidity ^0.8.13;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 
@@ -11,15 +12,13 @@ import "@openzeppelin/contracts/utils/Counters.sol";
 * information from Relic.sol regarding enclave type.
 */
 interface IRelic {
-    function balanceOf(address) external returns (uint256);
-    function tokenOfOwnerByIndex(address, uint256) external returns (uint256);
     function getRelicInfos(uint256 enclaves) external returns (uint256);
 }
 
 /**
 * @notice interfaced from Shards.sol to obtain address, token Id, amount owned and stored 
 *
- */
+*/
 interface IShards {
     function partnerMint(
         address account,
@@ -34,10 +33,7 @@ interface IShards {
 * upon reaching the winning state of Path of the Temple.
 * It uses EIP712 to verify that a user has signed the hashed message
 */
-contract PathofTheTemplarShard is 
-    Ownable,
-    AccessControl 
-{
+contract PathofTheTemplarShard is AccessControl {
 
     IShards private SHARDS;
     IRelic private RELIC;
@@ -47,11 +43,13 @@ contract PathofTheTemplarShard is
 
     using Counters for Counters.Counter;
 
+    bytes32 constant MINTREQUEST_TYPEHASH = keccak256("MintRequest(address signer,uint256 deadline,uint256 nonce)");
+    bytes32 constant EIP712DOMAIN_TYPEHASH = keccak256("EIP712Domain(string name,string version,uint256 chainId)");
+    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 immutable public DOMAIN_SEPARATOR;
-    //added bytes 32 digest to this struct
-    struct QuestCompleteReq {
-        address signer;
-        bytes32 digest;
+
+    struct MintRequest {
+        address account;
         uint256 deadline;
         uint256 nonce;
     }
@@ -70,29 +68,38 @@ contract PathofTheTemplarShard is
     error InvalidSignature(address account);
 
     modifier canMint() {
-        if (msg.sender != signer) {
-            revert MintForbidden();
+        if (msg.sender != signer ) {
+            revert MintForbidden("MintForbidden");
         }
 
         _;
     }
 
+//mapping the Shard ID from its declared array to the Enclave names
 mapping(uint256 => string) public shardToEnclave;
-mapping(bytes32 => address) signedQuestCompletedMessage;
-mapping(address => uint256[]) public questCompletedMessageBy;
+// mapping address to nonces for incremental counter
 mapping(address => Counters.Counter) public nonces;
-//TODO Fix the msg.sender as the only authorizedMinter
-constructor() {
-        authorizedMinters = msg.sender;
 
-        EIP712Domain memory domain = EIP712Domain({
+// Constructor occurs just once during deployment of contract 
+// original deployer is granted the default admin role
+// Shards and domain separator constant is initialised
+// using name, version and Arbitrum Goerli chainID.
+constructor(IShards shards, uint256 chainId) {
+        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        SHARDS = shards;
+        DOMAIN_SEPARATOR = hash(EIP712Domain({
             name: "PathofTheTemplarShard",
-            version: "1",
+            version: '1',
             chainId: 421613
-        });
-        DOMAIN_SEPARATOR = hash(domain);
+        }));
     }
+// setMintRequest grants the address calling this function the ability to mint if the check
+// using EIP712 standard below are passed (with signature verification, deadline and nonce)
+function setMintRequest(address account, bytes calldata signature) external canMint {
+    SHARDS.partnerMint(msg.sender, SHARD_ID[0], 1, "");
+}
 
+//for loop checks if the Enclave name matches the Shard ID
 function establishMapping() public {
     // Establish the mapping between SHARD_ID and ENCLAVE
     for (uint256 i = 1; i < SHARD_ID.length; i++) {
@@ -100,52 +107,33 @@ function establishMapping() public {
     }
 }
 
-function mintPathofthetemplarShard() external canMint {
-    SHARDS.partnerMint(msg.sender, SHARD_ID[], 1, "");
-}
-
+// Shard Id corresponding to Enclave can be viewed publically by anyone calling this function
 function getEnclaveForShard(uint256 shardId) public view returns (string memory) {
         return shardToEnclave[shardId];
     }
 
-function setAuthorization(uint256[] calldata signer) external {
-        _setAuthorization(msg.sender, signer);
-}
-//TODO I believe I should remove the second variable
-function _setAuthorization(address account, uint256[] calldata signer) internal {
-    if (signer.length > 1) {
-        revert TooManyMessages();
-    }
-//TODO State the right variable
-    questCompletedBy[owner] = signer;
-}
-
-//This function creates a hashed message for the message signer to confirm their signature
-//TODO Change and shorten naming convention of functions and parameter. Some of the codebase
-//can be further shortened as some parts are not relevant to my use case.
-//The keccak256 method to obtain the bytes32 digest below is fine but I need to adjust the definitions of
-//user, account, signer, msg.sender and authorizedMinter
-function relayedSignatureFor(QuestCompleteReq calldata req, bytes calldata signature) external {
+// Function takes two parameters request and signature 
+function relayMintRequestFor(MintRequest calldata request, bytes calldata signature) external {
     //concatenates the three values into a digest via a keccak256 hash function
     bytes32 digest = keccak256(abi.encodePacked(
         "\x19\x01",
         DOMAIN_SEPARATOR,
-        hash(req)
+        hash(request)
         ));
         //recover the signer with the signature by comparing the public key with the private key
         (address signer, ECDSA.RecoverError err) = ECDSA.tryRecover(digest, signature);
         // Check for error in signature recovery process
         if (err != ECDSA.RecoverError.NoError) {
-            revert InvalidSignature(req.account);
+            revert InvalidSignature(request.account);
         }
         // Check for error if deadline is expired
-        if (block.timestamp > req.deadline) revert DeadlineExpired(block.timestamp - req.deadline);
+        if (block.timestamp > request.deadline) revert DeadlineExpired(block.timestamp - request.deadline);
         // Check for error if authorized Minter matches signer
-        if (signer != req.account) revert InvalidSignature(req.account);
+        if (signer != request.account) revert InvalidSignature(request.account);
         // Checks for error if nonce is valid for authorized Minter
-        if (_useNonce(req.account) != req.nonce) revert InvalidNonce(req.account);
+        if (_useNonce(request.account) != request.nonce) revert InvalidNonce(request.account);
         // Set the provided deadline and nonce for the Set Quest Completed Message.
-        _setAuthorization(req.authorizedMinter, req.enclaves);
+        grantRole(MINTER_ROLE, request.account);
  
     }
 
@@ -158,10 +146,6 @@ function relayedSignatureFor(QuestCompleteReq calldata req, bytes calldata signa
         nonce.increment();
     }
 
-/**
-* @notice defined EIP712 domain type Hash with name, version and chain Id.
-*/
-    bytes32 constant EIP712DOMAIN_TYPEHASH = keccak256("EIP712Domain(string name,string version,uint256 chainId)");
 /**
 * @dev hash function stores custom data type QuestCompletedMessageReq as input
 * in a bytes32 hash from data input values of name, version and chainId.
@@ -178,16 +162,14 @@ function relayedSignatureFor(QuestCompleteReq calldata req, bytes calldata signa
 /**
 * @notice defined Signed Quest Completed Message type Hash with signer, expected deadline and expected nonce 
 */
-    bytes32 constant SIGNEDQUESTCOMPLETE_TYPEHASH = keccak256("QuestCompleteReq(address signer,uint256 deadline,uint256 nonce)");
-
 /**
 * @dev hash function stores custom data type QuestCompletedMessageReq with input values
 * of signer, deadline and nonce into a bytes32 hash.
 */
-    function hash(AuthorizationReq memory _input) internal pure returns (bytes32) {
+    function hash(MintRequest memory _input) internal pure returns (bytes32) {
         return keccak256(abi.encode(
-            SIGNEDQUESTCOMPLETE_TYPEHASH,
-            _input.signer,
+            MINTREQUEST_TYPEHASH,
+            _input.account,
             _input.deadline,
             _input.nonce
         ));
