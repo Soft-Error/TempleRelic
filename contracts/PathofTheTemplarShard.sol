@@ -2,6 +2,7 @@ pragma solidity ^0.8.13;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
@@ -20,11 +21,11 @@ Intended contract specs:
 * 3) Recover the address of the account calling the function using the digest and signature through this hash
 * 4) Map Shards to each enclave
 * 5) Allow a verified signer to mint the chosen Enclave Shard
+
 */
 /**
 * @notice interfaced from Shards.sol to obtain address, token Id, amount owned and stored data
 * for future use
-*
 */
 interface IShards {
     function partnerMint(
@@ -40,7 +41,7 @@ interface IShards {
 * upon reaching the winning state of Path of the Temple.
 * It uses EIP712 to verify that a user has signed the hashed message
 */
-contract PathofTheTemplarShard is AccessControl {
+contract PathofTheTemplarShard is Ownable {
 
     IShards private SHARDS;
     IRelic private RELIC;
@@ -50,6 +51,7 @@ contract PathofTheTemplarShard is AccessControl {
 
     using Counters for Counters.Counter;
 
+    // Defining the CONSTANTS which are of bytes32 type
     bytes32 constant MINTREQUEST_TYPEHASH = keccak256("MintRequest(address signer,uint256 deadline,uint256 nonce)");
     bytes32 constant EIP712DOMAIN_TYPEHASH = keccak256("EIP712Domain(string name,string version,uint256 chainId)");
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
@@ -69,8 +71,7 @@ contract PathofTheTemplarShard is AccessControl {
         uint256 chainId;
     }
 
-    //error definitions
-    error TooManyMessages();
+    //error definition for when msg.sender is not signer
     error MintForbidden();
 
     // error definitions for passing checks related to the hashed message and signature
@@ -78,16 +79,21 @@ contract PathofTheTemplarShard is AccessControl {
     error InvalidNonce(address account);
     error InvalidSignature(address account);
 
-    // modifier applied so that if the address calling the mint function is not the signer, the tx
+    // MinterSet event takes the minter and value as parameters once an address calling the setMinter function
+    // passes the check to be updated with the minter role
+    event MinterSet(address indexed minter, bool value);
+
+    // modifier applied so that if the account calling the function is not the minter, the tx will
     // revert with the Mint Forbidden message.
     modifier canMint() {
-        if (msg.sender != signer ) {
-            revert MintForbidden("MintForbidden");
+        if (!minters[msg.sender]) {
+            revert MintForbidden();
         }
 
         _;
     }
-
+//mapping role for minting to the address calling mint function if check is passed
+mapping(address => bool) public minters;
 //mapping the Shard ID from its declared array to the Enclave names
 mapping(uint256 => string) public shardToEnclave;
 // mapping address to nonces for incremental counter
@@ -97,8 +103,11 @@ mapping(address => Counters.Counter) public nonces;
 // original deployer is granted the default admin role
 // Shards and domain separator constant is initialised
 // using name, version and Arbitrum Goerli chainID.
-constructor(IShards shards, uint256 chainId) {
-        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+constructor(IShards shards) {
+    if (msg.sender != owner()) {
+        revert("Only contract owner can deploy");
+    }
+        
         SHARDS = shards;
         DOMAIN_SEPARATOR = hash(EIP712Domain({
             name: "PathofTheTemplarShard",
@@ -106,9 +115,10 @@ constructor(IShards shards, uint256 chainId) {
             chainId: 421613
         }));
     }
+
 // setMintRequest grants the address calling this function the ability to mint if the check
 // using EIP712 standard below are passed (with signature verification, deadline and nonce)
-function setMintRequest(address account, bytes calldata signature) external canMint {
+function setMintRequest() external canMint {
     SHARDS.partnerMint(msg.sender, SHARD_ID[0], 1, "");
 }
 
@@ -125,6 +135,14 @@ function getEnclaveForShard(uint256 shardId) public view returns (string memory)
         return shardToEnclave[shardId];
     }
 
+// Only contract owner may call the minter role for an account that has passed the check.
+// the minter role corresponding to the account that passed is stored in value.
+function setMinter(address account, bool value) external onlyOwner {
+    minters[account] = value;
+    //emit the new role for the account
+    emit MinterSet(account, value);
+}
+
 // Function takes two parameters request and signature 
 function relayMintRequestFor(MintRequest calldata request, bytes calldata signature) external {
     //concatenates the three values into a hash readable as a digest via a keccak256 hash function
@@ -135,7 +153,7 @@ function relayMintRequestFor(MintRequest calldata request, bytes calldata signat
         ));
         // stores address into signer and error recovery in err and use recover to verify digest and signature
         // is from address calling function
-        (address signer, ECDSA.RecoverError err) = ECDSA.tryRecover(digest, signature);
+        (address minter, ECDSA.RecoverError err) = ECDSA.tryRecover(digest, signature);
         // Check for error in signature recovery process
         if (err != ECDSA.RecoverError.NoError) {
             revert InvalidSignature(request.account);
@@ -143,12 +161,13 @@ function relayMintRequestFor(MintRequest calldata request, bytes calldata signat
         // Check for error if deadline is expired
         if (block.timestamp > request.deadline) revert DeadlineExpired(block.timestamp - request.deadline);
         // Check for error if requesting address matches signer
-        if (signer != request.account) revert InvalidSignature(request.account);
+        if (minter != request.account) revert InvalidSignature(request.account);
         // Checks for error if nonce is valid for requesting address
         if (_useNonce(request.account) != request.nonce) revert InvalidNonce(request.account);
-        // Set MINTER ROLE to request.account
-        grantRole(MINTER_ROLE, request.account);
- 
+
+        minters[request.account] = true;
+        emit MinterSet(request.account, true);
+        
     }
 
     /**
