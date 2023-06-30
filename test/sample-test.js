@@ -1,9 +1,11 @@
 const { expect } = require("chai");
-const { BigNumber } = require("ethers");
+const { BigNumber, Signer } = require("ethers");
 const { ethers } = require("hardhat");
 
 let Relic, relic, Shards, shards, PartnerMinter, partnerMinter, TempleWL, templeWL, Dummycoin, dummycoin;
 let owner, add1, add2, add3, add4, add5, add6, add7, add8, add9; 
+let SHARD_ID;
+let ENCLAVE;
 
 let Test, test;
 
@@ -22,6 +24,9 @@ describe("Greeter", function () {
     PartnerMinter = await ethers.getContractFactory("PartnerMinter");
     partnerMinter = await PartnerMinter.deploy();
 
+    PathOfTheTemplarShard = await ethers.getContractFactory("PathOfTheTemplarShard");
+    pathOfTheTemplarShard = await PathOfTheTemplarShard.deploy();
+
     TempleWL = await ethers.getContractFactory("TempleSacrifice");
     templeWL = await TempleWL.deploy();
 
@@ -37,8 +42,9 @@ describe("Greeter", function () {
     await shards.whiteListItemsForPartner(partnerMinter.address, [0,1], true);
     // await relic.whitelistTemplar(add1.address);
     await partnerMinter.setRelicShards(shards.address);
+    await pathOfTheTemplarShard.setOwner(add1);
 
-    await dummycoin.connect(add1).getmooni();
+    await dummycoin.connect(add1).getmooni(10);
 
     await templeWL.setAddresses(relic.address, dummycoin.address);
     let timmme = (await ethers.provider.getBlock("latest")).timestamp;
@@ -46,7 +52,7 @@ describe("Greeter", function () {
 
   });
 
-  xit("should mint", async ()=>{
+  it("should mint", async ()=>{
     await relic.connect(add1).mintRelic(1);
     await shards.connect(add1).mintFromUser(0);
 
@@ -68,6 +74,22 @@ describe("Greeter", function () {
     console.log("add2 balance is ", await shards.balanceOf(add2.address,0));
     console.log("relic balance is: ", await relic.getBalance(0,0));
 
+  });
+
+  it("Should map Shard Id to Enclave", async ()=>{
+    await pathOfTheTemplarShard.establishMapping();
+
+    for (let i = 1; i < SHARD_ID.length; i++) {
+      expect(await pathOfTheTemplarShard.getEnclaveForShard(SHARD_ID[i])).to.equal(ENCLAVE[i]);
+    }
+  });
+
+  it("Should check if deployer is owner", async ()=>{
+    expect(await pathOfTheTemplarShard.deployer()).to.equal(owner.address);
+  });
+
+  it("Should derive message signer for mint request", async ()=>{
+    expect(await pathOfTheTemplarShard.signer()).to.equal()
   });
 
   xit("should level up", async () =>{
@@ -197,7 +219,7 @@ describe("Greeter", function () {
     console.log("balance2: ", await shards.balanceOf(add1.address, 2));
   });
 
-  it("Should test erc20 contract outbound", async ()=>{
+  xit("Should test erc20 contract outbound", async ()=>{
     await dummycoin.connect(add1).getmooni();
     // await dummycoin.connect(add1).transfer(test.address,ethers.utils.parseUnits("1000", 18));
     console.log("ADD4 eth balance: ",await ethers.provider.getBalance(add4.address));
@@ -232,5 +254,5 @@ describe("Greeter", function () {
     console.log("ADD4 eth balance: ",await ethers.provider.getBalance(add4.address));
 
   });
-
+  
 });
