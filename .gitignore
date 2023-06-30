@@ -4,8 +4,8 @@ node_modules
 coverage
 coverage.json
 typechain
-.DS_Store
-
+settings.json
+getPrivateKeys.js
 #Hardhat files
 cache
 artifacts
