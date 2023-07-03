@@ -124,9 +124,9 @@ contract PathOfTheTemplarShard is Ownable {
         );
     }
 
-    // setMintRequest grants the address calling this function the ability to mint if the check
+    // mintShard grants the address calling this function the ability to mint if the check
     // using EIP712 standard below are passed (with signature verification, deadline and nonce)
-    function setMintRequest() external canMint {
+    function mintShard() external canMint {
         SHARDS.partnerMint(msg.sender, SHARD_ID[0], 1, "");
     }
 
