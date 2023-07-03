@@ -1,3 +1,6 @@
+pragma solidity 0.8.18;
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //                           &@@#
 //                         @@@@@@                   @@@@@@@
 //                      (@@@@@@@,                &@@@@@@@@@@@
@@ -17,17 +20,17 @@
 //                            #@@@@@@@@@@@@@@@@@@@@@@@*
 //                                  (@@@@@@@@@@@(
 
-pragma solidity ^0.8.4;
-
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
-import "@openzeppelin/contracts/utils/Counters.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
+import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import { ERC721URIStorage } from "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+import { ERC721Enumerable } from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { ERC721Burnable } from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
+import { Counters } from "@openzeppelin/contracts/utils/Counters.sol";
+import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import { IERC1155Receiver } from "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
 
 interface IShards {
     function equipShard(
@@ -169,7 +172,7 @@ contract Relic is
     function supportsInterface(bytes4 interfaceId)
         public
         view
-        override(IERC165, ERC721, ERC721Enumerable)
+        override(IERC165, ERC721, ERC721Enumerable, ERC721URIStorage)
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
@@ -264,9 +267,10 @@ contract Relic is
     function _beforeTokenTransfer(
         address from,
         address to,
-        uint256 tokenId
+        uint256 firstTokenId,
+        uint256 batchSize
     ) internal override(ERC721, ERC721Enumerable) whenNotPaused {
-        super._beforeTokenTransfer(from, to, tokenId);
+        super._beforeTokenTransfer(from, to, firstTokenId, batchSize);
     }
 
     function _burn(uint256 tokenId)
