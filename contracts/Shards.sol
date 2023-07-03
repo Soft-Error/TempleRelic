@@ -1,3 +1,6 @@
+pragma solidity 0.8.18;
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 //                                                .@@@@@@@@@@@@@@@                
 //                                                .@@           @@                
 //                                                .@@           @@                
@@ -18,15 +21,12 @@
 //                 @@           @@                                                
 //                 @@@@@@@@@@@@@@@   
 
-pragma solidity ^0.8.4;
-
-import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
-import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
-import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-
+import { ERC1155 } from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
+import { ERC1155Burnable } from "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
+import { ERC1155Supply } from "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 interface IRelic { 
     function getRelicId(address _owner) external view returns (uint256);
