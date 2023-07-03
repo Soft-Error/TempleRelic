@@ -29,8 +29,6 @@ beforeEach("Initialize",async ()=>{
     pathOfTheTemplarShard = await PathOfTheTemplarShard.deploy();
     await pathOfTheTemplarShard.deployed();
 
-    await pathOfTheTemplarShard.setShards(shards.address);
-
     SHARD_ID = await pathOfTheTemplarShard.SHARD_ID();
     ENCLAVE = await pathOfTheTemplarShard.ENCLAVE();
 
@@ -47,14 +45,51 @@ it("Check if mapping of enclave to Shard Id is correct", async function () {
     for (let i = 1; i < SHARD_ID.length; i++) {
       expect(await pathOfTheTemplarShardshardContract.getEnclaveForShard(SHARD_ID[i])).to.equal(ENCLAVE[i]);
     }
-  });
+});
 
-  it("Check if deployer is owner", async function () {
+it("Check if deployer is owner", async function () {
     expect(await pathOfTheTemplarShardshardContract.owner()).to.equal(owner.address);
-  });
+});
 
-  it("Check if set minter can be performed by owner", async function () {
+it("Check if set minter can be performed by owner", async function () {
     expect(await pathOfTheTemplarShard.connect(BOB)).setMinter(BOB.address, true).to.be.revertedWith('Ownable: Caller is not owner');
     expect(await pathOfTheTemplarShard.connect(owner)).setMinter(ALICE.address, true).to.emit(pathOfTheTemplarShard, 'MinterSet').withArgs(ALICE.address, true);
-    });
- 
+});
+
+it("Check if msg.sender can obtain minter role", async function () {
+    expect(await pathOfTheTemplarShard.connnect(ALICE).setMinter(ALICE.address, true).to.emit(pathOfTheTemplarShard, 'Minter role', true));
+});
+
+it("Check if msg.sender can mint", async function () {
+    expect(await pathOfTheTemplarShard.connect(ALICE.address).canMint(1));
+});
+
+const mintRequest = {
+    account: ALICE.address,
+    deadline: now + 3600,
+    nonce: 0,
+};
+
+const domain = {
+    name: "PathOfTheTemplarShard",
+    version: "1",
+    chainId: 421613,
+    verifyingContract: pathOfTheTemplarShardContract.address,
+};
+
+const types = {
+    EIP712Domain: [
+        { name: "name", type: "string" },
+        {name: "version", type: "string" },
+        { name: "chainId", type: "uint256" },
+        { name: "verifyingContract", type: "address" }
+    ],
+    MintRequest: [
+        { name: 'account', type: 'address' },
+        { name: 'deadline', type: 'uint256' },
+        { name: 'nonce', type: 'uint256' }, 
+    ]
+};
+
+const signature = await ALICE._signTypedData(domain, types, mintRequest);
+await expect(pathOfTheTemplarShardContract.relayMintRequestFor(mintRequest, signature)).to.not.be.reverted;
