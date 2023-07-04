@@ -80,6 +80,7 @@ contract PathofTheTemplarShard is Ownable {
 
     //error definition for when msg.sender is not signer
     error MintForbidden();
+    error InvalidMint(address account);
 
     // error definitions for passing checks related to the hashed message and signature
     error DeadlineExpired(uint256 lateBy);
@@ -127,8 +128,11 @@ contract PathofTheTemplarShard is Ownable {
 
     // mintShard grants the address calling this function the ability to mint if the check
     // using EIP712 standard below are passed (with signature verification, deadline and nonce)
-    function mintShard() external canMint {
-        SHARDS.partnerMint(msg.sender, SHARD_ID[0], 1, "");
+    function mintShard(uint256 _shardIndex) external canMint {
+        if (_shardIndex > SHARD_ID.length) {
+            revert InvalidMint(msg.sender);
+        }
+        SHARDS.partnerMint(msg.sender, SHARD_ID[_shardIndex], 1, "");
     }
 
     //for loop checks if the Enclave name matches the Shard ID
