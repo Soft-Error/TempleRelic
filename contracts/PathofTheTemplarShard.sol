@@ -127,8 +127,11 @@ contract PathOfTheTemplarShard is Ownable {
 
     // setMintRequest grants the address calling this function the ability to mint if the check
     // using EIP712 standard below are passed (with signature verification, deadline and nonce)
-    function setMintRequest() external canMint {
-        SHARDS.partnerMint(msg.sender, SHARD_ID[0], 1, "");
+    function mintShard(uint256 _shardIndex) external canMint {
+        if (_shardIndex < SHARD_ID.length || _shardIndex > SHARD_ID.length) {
+            revert InvalidMint(msg.sender);
+        }
+        SHARDS.partnerMint(msg.sender, SHARD_ID[_shardIndex], 1, "");
     }
 
     //for loop checks if the Enclave name matches the Shard ID
