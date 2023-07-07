@@ -77,6 +77,13 @@ module.exports = {
                 : [],
             gasPrice: 2000000000,
         },
+        goerli: {
+            url: process.env.GOERLI_RPC_URL || '',
+            accounts: process.env.GOERLI_ADDRESS_PRIVATE_KEY
+                ? [process.env.GOERLI_ADDRESS_PRIVATE_KEY]
+                : [],
+                gasPrice: 2000000000,
+        }
     },
     etherscan: {
         // Your API key for Etherscan
@@ -84,6 +91,7 @@ module.exports = {
         apiKey: {
             mainnet: process.env.ETHERSCAN_API_KEY,
             sepolia: process.env.ETHERSCAN_API_KEY,
+            goerli: process.env.ETHERSCAN_API_KEY,
         },
     },
     mocha: {
