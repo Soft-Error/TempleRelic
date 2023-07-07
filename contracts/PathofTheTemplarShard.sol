@@ -81,6 +81,7 @@ contract PathOfTheTemplarShard is Ownable {
 
     //error definition for when msg.sender is not signer
     error MintForbidden();
+    error InvalidMint(address account);
 
     // error definitions for passing checks related to the hashed message and signature
     error DeadlineExpired(uint256 lateBy);
