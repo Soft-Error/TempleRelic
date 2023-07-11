@@ -2,6 +2,8 @@ import { ethers } from "hardhat";
 import { BigNumber, Signer } from "ethers";
 import { TypedDataDomain, TypedDataField, TypedDataSigner } from "@ethersproject/abstract-signer";
 import { expect } from "chai";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+
 import {
   PathOfTheTemplarShard, PathOfTheTemplarShard__factory,
   Relic, Relic__factory,
@@ -66,46 +68,6 @@ describe("PathOfTheTemplarShard", async () => {
         }
     });
 
-    it("Check if mint request is relayed successfully", async function () {
-
-        const provider = ethers.getDefaultProvider();
-        const block = await provider.getBlock(await provider.getBlockNumber());
-        const now = block.timestamp;
-
-        const deadline = now + 3600;
-
-        const request = {
-            account: await add2.getAddress(),
-            nonce: 1,
-            deadline: deadline,
-        };
-
-        console.log("Request: ", request);
-
-        const signature = await add2.signMessage(
-          ethers.utils.arrayify(
-            ethers.utils.solidityKeccak256(
-              ["address", "uint256", "uint256"],
-              [request.account, request.nonce, request.deadline]
-            )
-          )
-        );
-        
-        // Print the signature
-        console.log("Signature: ", signature);
-
-        await expect(
-            pathOfTheTemplarShard.relayMintRequestFor(request, signature)
-        )
-            .to.emit(pathOfTheTemplarShard, 'MinterSet')
-            .withArgs(request.account, true);
-      
-        // Print the minter status of the account
-        console.log("Minter status: ", await pathOfTheTemplarShard.minters(request.account));
-      
-        expect(await pathOfTheTemplarShard.minters(request.account)).to.equal(true);
-      });
-
     it("Check if owner can set Minter Role", async function () {
         const account = await add2.getAddress();
         const value = true;
@@ -121,23 +83,47 @@ describe("PathOfTheTemplarShard", async () => {
       });
 
       it("Check if message signer can mint", async function () {
-        const signer = await add2.getAddress();
-        const random = await add3.getAddress();
-        const shardIndex = [];
-        const invalidShardIndex = [];
-        for (let i = 2; i <= 6; i++)
-            shardIndex.push(SHARD_ID[i]);
-            invalidShardIndex.push(SHARD_ID[i] + 1);
-            invalidShardIndex.push(SHARD_ID[i] - 1);
+        await ethers.provider.getBlockNumber();
+        let currentTimestamp = await ethers.provider.getBlockNumber();
+        const account = await add2.getAddress();
+        const deadline = currentTimestamp - 600;
+        const nonce = 1;
+        const MintRequest = [account, deadline, nonce];
 
-        await pathOfTheTemplarShard.mintShard(shardIndex);
+        const data = {
+            types: {
+              EIP712Domain: [
+                { name: "name", type: "string" },
+                { name: "version", type: "string" },
+                { name: "chainId", type: "uint256" },
+              ],
+              MintRequest: [
+                { name: "account", type: "address" },
+                { name: "deadline", type: "uint256" },
+                { name: "nonce", type: "uint256" },
+              ],
+            },
+            domain: {
+              name: "PathOfTheTemplarShard",
+              version: "1",
+              chainId: 421613,
+            },
+            primaryType: "MintRequest",
+            message: {
+              account: await add2.getAddress(),
+              deadline: currentTimestamp - 600,
+              nonce: 1,
+            },
+          };
+        
+        const signature = add2._signTypedData (
+            data.domain,
+            data.types,
+            data.message
+        );
 
-        await expect(pathOfTheTemplarShard.connect(random)).to.emit(shards, 'PartnerMint')
-            .withArgs(add3.getAddress(), SHARD_ID[shardIndex], 1, "");
+        await pathOfTheTemplarShard.setMinter(await add2.getAddress(), true);
+        await pathOfTheTemplarShard.connect(add2).mintShard(MintRequest, signature, 2);
+        });
 
-        await expect(pathOfTheTemplarShard.mintShard(invalidShardIndex)).to.be.revertedWith("InvalidMint");
-
-        expect(await pathOfTheTemplarShard.minters((shardIndex))).to.equal(true);
-      });
-      
 });

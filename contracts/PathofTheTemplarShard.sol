@@ -128,7 +128,12 @@ contract PathOfTheTemplarShard is Ownable {
 
     // setMintRequest grants the address calling this function the ability to mint if the check
     // using EIP712 standard below are passed (with signature verification, deadline and nonce)
-    function mintShard(uint256 _shardIndex) external canMint {
+    function mintShard(
+        MintRequest calldata request,
+        bytes calldata signature,
+        uint256 _shardIndex
+    ) external canMint {
+        _relayMintRequestFor(request, signature);
         if (_shardIndex < SHARD_ID.length || _shardIndex > SHARD_ID.length) {
             revert InvalidMint(msg.sender);
         }
@@ -159,10 +164,10 @@ contract PathOfTheTemplarShard is Ownable {
     }
 
     // Function takes two parameters request and signature
-    function relayMintRequestFor(
+    function _relayMintRequestFor(
         MintRequest calldata request,
         bytes calldata signature
-    ) external {
+    ) internal {
         //concatenates the three values into a hash readable as a digest via a keccak256 hash function
         bytes32 digest = keccak256(
             abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR, hash(request))
@@ -185,9 +190,6 @@ contract PathOfTheTemplarShard is Ownable {
         // Checks for error if nonce is valid for requesting address
         if (_useNonce(request.account) != request.nonce)
             revert InvalidNonce(request.account);
-
-        minters[request.account] = true;
-        emit MinterSet(request.account, true);
     }
 
     /**
