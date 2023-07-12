@@ -1,5 +1,4 @@
 import { ethers } from "hardhat";
-import { BigNumber, Signer } from "ethers";
 import { TypedDataDomain, TypedDataField, TypedDataSigner } from "@ethersproject/abstract-signer";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
@@ -12,10 +11,12 @@ import {
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import path from "path";
 
-let owner: Signer;
-let add2: Signer;
-let add3: Signer;
-let add4: Signer;
+type MySigner = SignerWithAddress & TypedDataSigner;
+
+let owner: MySigner;
+let add2: MySigner;
+let add3: MySigner;
+let add4: MySigner;
 let pathOfTheTemplarShard: PathOfTheTemplarShard;
 let relic: Relic;
 let shards: Shards;
@@ -28,7 +29,6 @@ let ENCLAVE: string[] = [
     "structureEnclave",
     "orderEnclave"
 ];
-
 
 describe("PathOfTheTemplarShard", async () => {
 
@@ -116,11 +116,7 @@ describe("PathOfTheTemplarShard", async () => {
             },
           };
         
-        const signature = add2._signTypedData (
-            data.domain,
-            data.types,
-            data.message
-        );
+        const signature = await account._signTypedData(data.domain, data.types, data.message);
 
         await pathOfTheTemplarShard.setMinter(await add2.getAddress(), true);
         await pathOfTheTemplarShard.connect(add2).mintShard(MintRequest, signature, 2);

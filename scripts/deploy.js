@@ -14,7 +14,7 @@ async function main() {
   // await hre.run('compile');
 
   // We get the contract to deploy
-  const Initialize = await hre.ethers.getContractFactory("PathofTheTemplarShard");
+  const Initialize = await hre.ethers.getContractFactory("PathOfTheTemplarShard");
   const initialize = await Initialize.deploy();
 
   await initialize.deployed();
