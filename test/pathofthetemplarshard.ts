@@ -110,7 +110,7 @@ describe("PathOfTheTemplarShard", async () => {
             },
             primaryType: "MintRequest",
             message: {
-              account: await add2.getAddress(),
+              account: await add3.getAddress(),
               deadline: currentTimestamp + 600,
               nonce: 1,
             },
