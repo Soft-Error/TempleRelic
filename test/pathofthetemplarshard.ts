@@ -86,7 +86,7 @@ describe("PathOfTheTemplarShard", async () => {
         await ethers.provider.getBlockNumber();
         let currentTimestamp = await ethers.provider.getBlockNumber();
         const account = await add2.getAddress();
-        const deadline = currentTimestamp - 600;
+        const deadline = currentTimestamp + 600;
         const nonce = 1;
         const MintRequest = [account, deadline, nonce];
 
@@ -111,7 +111,7 @@ describe("PathOfTheTemplarShard", async () => {
             primaryType: "MintRequest",
             message: {
               account: await add2.getAddress(),
-              deadline: currentTimestamp - 600,
+              deadline: currentTimestamp + 600,
               nonce: 1,
             },
           };
@@ -119,7 +119,7 @@ describe("PathOfTheTemplarShard", async () => {
         const signature = await account._signTypedData(data.domain, data.types, data.message);
 
         await pathOfTheTemplarShard.setMinter(await add2.getAddress(), true);
-        await pathOfTheTemplarShard.connect(add2).mintShard(MintRequest, signature, 2);
+        await pathOfTheTemplarShard.connect(add3).mintShard(MintRequest, signature, 2);
         });
 
 });
