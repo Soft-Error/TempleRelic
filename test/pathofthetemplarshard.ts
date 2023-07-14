@@ -82,25 +82,25 @@ describe("PathOfTheTemplarShard", async () => {
 
       });
 
+      it("Check if a signer that is not whitelisted minter produces an invalid signature", async function () {
+
+      });
+
       it("Check if message signer can mint", async function () {
-        await ethers.provider.getBlockNumber();
         let currentTimestamp = await ethers.provider.getBlockNumber();
-        const account = await add2.getAddress();
-        const deadline = currentTimestamp + 600;
-        const nonce = 1;
-        const MintRequest = [account, deadline, nonce];
+        const account = await add3.getAddress();
+        const deadline = 168317755900;
+        console.dir({deadline, currentTimestamp});
+        const nonce = await pathOfTheTemplarShard.nonces(account);
+        const MintRequest: PathOfTheTemplarShard.MintRequestStruct = {account, deadline, nonce};
 
         const data = {
-            types: {
-              EIP712Domain: [
-                { name: "name", type: "string" },
-                { name: "version", type: "string" },
-                { name: "chainId", type: "uint256" },
-              ],
-              MintRequest: [
-                { name: "account", type: "address" },
-                { name: "deadline", type: "uint256" },
-                { name: "nonce", type: "uint256" },
+          types: {
+
+            MintRequest: [
+              { name: "account", type: "address" },
+              { name: "deadline", type: "uint256" },
+              { name: "nonce", type: "uint256" },
               ],
             },
             domain: {
@@ -110,13 +110,13 @@ describe("PathOfTheTemplarShard", async () => {
             },
             primaryType: "MintRequest",
             message: {
-              account: await add3.getAddress(),
-              deadline: currentTimestamp + 600,
-              nonce: 1,
+              account: account,
+              deadline: deadline,
+              nonce: nonce,
             },
           };
-        
-        const signature = await account._signTypedData(data.domain, data.types, data.message);
+
+        const signature = await add2._signTypedData(data.domain, data.types, data.message);
 
         await pathOfTheTemplarShard.setMinter(await add2.getAddress(), true);
         await pathOfTheTemplarShard.connect(add3).mintShard(MintRequest, signature, 2);
