@@ -132,7 +132,7 @@ contract PathOfTheTemplarShard is Ownable {
         MintRequest calldata request,
         bytes calldata signature,
         uint256 _shardIndex
-    ) external canMint {
+    ) external {
         _relayMintRequestFor(request, signature);
         if (_shardIndex < SHARD_ID.length || _shardIndex > SHARD_ID.length) {
             revert InvalidMint(msg.sender);
@@ -174,7 +174,7 @@ contract PathOfTheTemplarShard is Ownable {
         );
         // stores address into signer and error recovery in err and use recover to verify digest and signature
         // is from address calling function
-        (address minter, ECDSA.RecoverError err) = ECDSA.tryRecover(
+        (address signer, ECDSA.RecoverError err) = ECDSA.tryRecover(
             digest,
             signature
         );
@@ -185,8 +185,8 @@ contract PathOfTheTemplarShard is Ownable {
         // Check for error if deadline is expired
         if (block.timestamp > request.deadline)
             revert DeadlineExpired(block.timestamp - request.deadline);
-        // Check for error if requesting address matches signer
-        if (minter != request.account) revert InvalidSignature(request.account);
+        // Check for error if signer is whitelisted minter
+        if (!minters[signer]) revert InvalidSignature(request.account);
         // Checks for error if nonce is valid for requesting address
         if (_useNonce(request.account) != request.nonce)
             revert InvalidNonce(request.account);
