@@ -1,5 +1,5 @@
 const { expect } = require("chai");
-const { BigNumber } = require("ethers");
+const { BigNumber, Signer } = require("ethers");
 const { ethers } = require("hardhat");
 
 let Relic, relic, Shards, shards, PartnerMinter, partnerMinter, TempleWL, templeWL, Dummycoin, dummycoin;
@@ -22,6 +22,9 @@ describe("Greeter", function () {
     PartnerMinter = await ethers.getContractFactory("PartnerMinter");
     partnerMinter = await PartnerMinter.deploy();
 
+    PathOfTheTemplarShard = await ethers.getContractFactory("PathOfTheTemplarShard");
+    pathOfTheTemplarShard = await PathOfTheTemplarShard.deploy();
+
     TempleWL = await ethers.getContractFactory("TempleSacrifice");
     templeWL = await TempleWL.deploy();
 
@@ -38,7 +41,7 @@ describe("Greeter", function () {
     // await relic.whitelistTemplar(add1.address);
     await partnerMinter.setRelicShards(shards.address);
 
-    await dummycoin.connect(add1).getmooni();
+    await dummycoin.connect(add1).getmooni(10);
 
     await templeWL.setAddresses(relic.address, dummycoin.address);
     let timmme = (await ethers.provider.getBlock("latest")).timestamp;
@@ -46,7 +49,7 @@ describe("Greeter", function () {
 
   });
 
-  xit("should mint", async ()=>{
+  it("should mint", async ()=>{
     await relic.connect(add1).mintRelic(1);
     await shards.connect(add1).mintFromUser(0);
 
@@ -197,7 +200,7 @@ describe("Greeter", function () {
     console.log("balance2: ", await shards.balanceOf(add1.address, 2));
   });
 
-  it("Should test erc20 contract outbound", async ()=>{
+  xit("Should test erc20 contract outbound", async ()=>{
     await dummycoin.connect(add1).getmooni();
     // await dummycoin.connect(add1).transfer(test.address,ethers.utils.parseUnits("1000", 18));
     console.log("ADD4 eth balance: ",await ethers.provider.getBalance(add4.address));
@@ -232,5 +235,5 @@ describe("Greeter", function () {
     console.log("ADD4 eth balance: ",await ethers.provider.getBalance(add4.address));
 
   });
-
+  
 });

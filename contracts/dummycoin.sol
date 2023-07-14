@@ -1,6 +1,7 @@
-pragma solidity ^0.8.13;
+pragma solidity 0.8.18;
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract dummycoin is ERC20 {
     constructor() ERC20("Dummy", "DUMB") {}
