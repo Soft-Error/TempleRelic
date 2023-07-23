@@ -46,18 +46,15 @@ describe("Greeter", function () {
 
   });
 
-  it("Should mint relic, then a shard, then transmute", async ()=>{
+  it("Should mint relic, then a shard", async ()=>{
 
-    await shards.createRecipe(0,[0,1],[1,1],[2],[1]);
-
-    console.log("balance Relic: ", await relic.balanceOf(add1.address));
-
-
-    // SACRIFICE
+    // sacrifice Temple and get whitelisted
     console.log("Get price: ", await templeSacrifice.getPrice());
     
     await dummycoin.connect(add1).approve(templeSacrifice.address, "1000000000000000000000");
     await templeSacrifice.connect(add1).sacrifice();
+
+    // mint relic
     await relic.connect(add1).mintRelic(0);
     console.log("balance Relic: ", await relic.balanceOf(add1.address));
 

@@ -46,23 +46,28 @@ contract Shards is
 {
     constructor() ERC1155("") {}
 
-    // whitelisted partners
+    // whitelisted partners to mint Shards for users
     mapping (address => bool) public partnerMinters;
-    // itemId for each partner
+    // Reserved itemId for each partner PARTNER_ADDRESS => ( SHARD_ID => AUTH? )
     mapping (address => mapping (uint256=>bool)) public partnerAllowedIds;
     // URIs
     mapping (uint256 => string) public tokenURIs;
     // Recipes
     mapping(uint256 => Recipe) public recipes;
 
-    // @dev Relic.sol
+    // Relic.sol
     IRelic private RELIC;
 
     struct Recipe {
+        // recipe ID
         uint16 id;
+        // required Shards input Ids
         uint256[] requiredIds;
+        // required Shards input amounts
         uint256[] requiredAmounts;
+        // required Shards input Ids
         uint256[] rewardIds;
+        // required Shards output amounts
         uint256[] rewardAmounts;
     }
 
@@ -154,11 +159,12 @@ contract Shards is
 
     //------- Owner -------//
 
-    // authorise a partner to mint an item
+    // authorise a partner to mint 
     function addPartner(address _partnerMinter, bool _flag) external onlyOwner {
         partnerMinters[_partnerMinter]=_flag;
     }
     
+    // authorise specific shard ids to be minted by a partner
     function whiteListItemsForPartner(address _partner, uint256[] memory _allowedIds, bool _allowed) external onlyOwner{
         for(uint i = 0;i<_allowedIds.length;i++){
             partnerAllowedIds[_partner][_allowedIds[i]]=_allowed;

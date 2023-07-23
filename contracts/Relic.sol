@@ -78,21 +78,29 @@ contract Relic is
         Epic,
         Legendary
     }
+    // users whitelisted for minting a Relic
     mapping(address => bool) public whitelisted;
+    // contracts authorised to mint Relics out
     mapping(address => bool) public whitelistedContracts;
+    // users' Relic Shard balances RELIC_ID => (SHARD_ID => BALANCE)
     mapping(uint256 => mapping(uint256 => uint256)) public balances;
+    // relic experience points
     mapping(uint256 => uint256) public relicXP;
 
+    // URIs served depending on relic rarity
     mapping(Rarity => string) private BASE_URIS;
+    // shard contract interface
     IShards public SHARDS;
+    // contract whitelisting users to mint a Relic
     address public whitelisterAddress;
+    // XP thresholds for Relic levels
     uint256[] public thresholds;
 
     event MintRelic(address to, uint256 enclave);
     event GivePoints(uint256 relicId, uint256 points);
 
     //------- External -------//
-
+    // called by whitelisted users to mint Relics
     function mintRelic(Enclave _selectedEnclave) external nonReentrant {
         require(whitelisted[msg.sender], "You cannot own a Relic yet");
         uint256 tokenId = _tokenIdCounter.current();
@@ -105,7 +113,7 @@ contract Relic is
         emit MintRelic(msg.sender, uint256(_selectedEnclave));
     }
 
-    // @dev Templar equips his Shard into his Relic
+    // Allows users to equip Shards into their Relics
     function batchEquipShard(
         uint256 _targetRelic,
         uint256[] memory _itemIds,
@@ -122,7 +130,7 @@ contract Relic is
             balances[_targetRelic][_itemIds[i]] += _amounts[i];
         }
     }
-
+    // Allows users to unequip Shards from their Relic
     function batchUnequipShard(
         uint256 _targetRelic,
         uint256[] memory _itemIds,
@@ -157,7 +165,7 @@ contract Relic is
         require(msg.sender == whitelisterAddress, "Not authorised");
         whitelisted[_toWhitelist] = true;
     }
-
+    // external temple contracts giving out XP points to your Relic
     function givePoints(uint256 _amount, uint256 _relicId) external {
         require(whitelistedContracts[msg.sender], "Not authorised");
         relicXP[_relicId] += _amount;
@@ -225,7 +233,7 @@ contract Relic is
                 )
             );
     }
-
+    // get Shard balance for a specific shard Id from a Relic
     function getBalance(uint256 _relicId, uint256 _tokenId)
         external
         view
