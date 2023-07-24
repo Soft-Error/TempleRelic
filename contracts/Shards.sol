@@ -140,7 +140,7 @@ contract Shards is
         emit Transmutation(msg.sender, _recipeId);
     }
 
-     // For partners to mint their items, logic implemented on their side
+     // How partners mint their items, logic implemented on their side
     function partnerMint(
         address _to,
         uint256 _id,
