@@ -113,7 +113,7 @@ contract Relic is
         emit MintRelic(msg.sender, uint256(_selectedEnclave));
     }
 
-    // Allows users to equip Shards into their Relics
+    // For users to equip Shards into their Relics
     function batchEquipShard(
         uint256 _targetRelic,
         uint256[] memory _itemIds,
